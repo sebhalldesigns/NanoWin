@@ -11,6 +11,8 @@
 #include "NanoWin.h"
 #include <SDL2/SDL.h>
 
+#include <NanoDraw.h>
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -24,8 +26,9 @@ typedef struct nWindow
     uint32_t windowId;
     SDL_Window* sdlWindow;
     SDL_Renderer* sdlRenderer;
+    nDrawingContext_h drawingContext;
 
-    char* title;
+    const char* title;
     
     int width;
     int height;
@@ -99,6 +102,10 @@ nWindow_h NanoWin_CreateWindow(int width, int height, const char* title)
         current->next = window;
     }
 
+    window->drawingContext = NanoDraw_SetupForWindow(window, window->sdlWindow, window->sdlRenderer);
+
+    RenderWindow(window);
+
     printf("CREATED WINDOW: %s %lu\n", title, window);
 
     SDL_SetEventFilter(EventFilter, NULL);
@@ -152,7 +159,57 @@ static int EventFilter(void*, SDL_Event *event)
 
 static void RenderWindow(nWindow_h window)
 {
-    SDL_SetRenderDrawColor(window->sdlRenderer, 0, 255, 0, 255);
-    SDL_RenderClear(window->sdlRenderer);
-    SDL_RenderPresent(window->sdlRenderer);
+
+    nTypeface_h typeface = NanoDraw_CreateTypeface(window->drawingContext, "./build/JetBrainsMono-Regular.ttf", 16.0f);
+    
+    NanoDraw_BeginFrame(window->drawingContext);
+
+    nDrawCommand command;
+    nDrawCommandData data;
+
+    command = SET_FILL_COLOR;
+    data.fillColorData.color.r = 1.0f;
+    data.fillColorData.color.g = 0.0f;
+    data.fillColorData.color.b = 0.0f;
+    data.fillColorData.color.a = 1.0f;
+
+    NanoDraw_Draw(window->drawingContext, command, data);
+
+    command = SET_ORIGIN;
+    data.originData.x = 100;
+    data.originData.y = 100;
+
+    NanoDraw_Draw(window->drawingContext, command, data);
+
+    command = SET_SIZE;
+    data.sizeData.width = 100;
+    data.sizeData.height = 100;
+
+    NanoDraw_Draw(window->drawingContext, command, data);
+     
+    command = DRAW_RECT;
+
+    NanoDraw_Draw(window->drawingContext, command, data);
+
+    command = SET_TEXT;
+    data.textData.text = window->title;
+
+    NanoDraw_Draw(window->drawingContext, command, data);
+
+    command = SET_TYPEFACE;
+    data.typefaceData.typeface = typeface;
+
+    NanoDraw_Draw(window->drawingContext, command, data);
+
+    command = DRAW_TEXT;
+
+    NanoDraw_Draw(window->drawingContext, command, data);
+
+    //NanoDraw_SetOrigin(window->drawingContext, 1.0f, 0.0f);
+    //NanoDraw_DrawText(window->drawingContext, window->title);
+
+
+    
+    NanoDraw_EndFrame(window->drawingContext);
+    
 }
