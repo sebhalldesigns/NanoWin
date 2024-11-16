@@ -12,6 +12,7 @@
 #include <SDL2/SDL.h>
 
 #include <NanoDraw.h>
+#include <NanoGraph.h>
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -27,6 +28,8 @@ typedef struct nWindow
     SDL_Window* sdlWindow;
     SDL_Renderer* sdlRenderer;
     nDrawingContext_h drawingContext;
+
+    nGraphNode_h rootNode;
 
     const char* title;
     
@@ -73,6 +76,7 @@ nWindow_h NanoWin_CreateWindow(int width, int height, const char* title)
     window->title = title;
     window->width = width;
     window->height = height;
+    window->rootNode = NULL;
 
     window->sdlWindow = SDL_CreateWindow(
         title, 
@@ -80,7 +84,7 @@ nWindow_h NanoWin_CreateWindow(int width, int height, const char* title)
         SDL_WINDOWPOS_CENTERED, 
         width, 
         height, 
-        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
+        SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE//SDL_WINDOW_SHOWN //| SDL_WINDOW_RESIZABLE
     );
 
     window->windowId = SDL_GetWindowID(window->sdlWindow);
@@ -104,7 +108,7 @@ nWindow_h NanoWin_CreateWindow(int width, int height, const char* title)
 
     window->drawingContext = NanoDraw_SetupForWindow(window, window->sdlWindow, window->sdlRenderer);
 
-    RenderWindow(window);
+    //(window);
 
     printf("CREATED WINDOW: %s %lu\n", title, window);
 
@@ -123,8 +127,29 @@ void NanoWin_PollEvents()
         {
             exit(0);
         }
+
+        //RenderWindow(windows);
     }
 }
+
+void NanoWin_SetRootNode(nWindow_h window, nGraphNode_h node)
+{
+    window->rootNode = node;
+    node->userRect.width = window->width;
+    node->userRect.height = window->height;
+    node->calculatedRect.width = window->width;
+    node->calculatedRect.height = window->height;
+    NanoGraph_Recalculate(window->rootNode);
+    RenderWindow(window);
+}
+
+void NanoWin_ShowWindow(nWindow_h window)
+{
+    SDL_ShowWindow(window->sdlWindow);
+    NanoGraph_Recalculate(window->rootNode);
+    RenderWindow(window);
+}
+
 
 /******************************************************************************
  * MARK: LOCAL FUNCTION IMPLEMENTATIONS
@@ -142,10 +167,24 @@ static int EventFilter(void*, SDL_Event *event)
         {
             if (current->windowId == event->window.windowID) 
             {   
-                printf("Window \"%s\" size changed to %d x %d\n", current->title, event->window.data1, event->window.data2);
+                
+                //printf ("WINDOW RESIZED %d %d\n", event->window.data1, event->window.data2);
                 current->width = event->window.data1;
                 current->height = event->window.data2;
+                if (current->rootNode != NULL)
+                {
+                    current->rootNode->calculatedRect.width = event->window.data1;
+                    current->rootNode->calculatedRect.height = event->window.data2;
+                    uint32_t startTime = SDL_GetTicks();
+                    NanoGraph_Recalculate(current->rootNode);
+
+                    uint32_t endTime = SDL_GetTicks();
+                    //printf("RECALCULATED GRAPH IN %d MS\n", endTime - startTime);
+                }
                 RenderWindow(current);
+
+                
+
                 return 1;
             }
 
@@ -160,56 +199,23 @@ static int EventFilter(void*, SDL_Event *event)
 static void RenderWindow(nWindow_h window)
 {
 
-    nTypeface_h typeface = NanoDraw_CreateTypeface(window->drawingContext, "./build/JetBrainsMono-Regular.ttf", 16.0f);
+
+    //nTypeface_h typeface = NanoDraw_CreateTypeface(window->drawingContext, "./build/JetBrainsMono-Regular.ttf", 16.0f);
+
     
     NanoDraw_BeginFrame(window->drawingContext);
 
-    nDrawCommand command;
-    nDrawCommandData data;
-
-    command = SET_FILL_COLOR;
-    data.fillColorData.color.r = 1.0f;
-    data.fillColorData.color.g = 0.0f;
-    data.fillColorData.color.b = 0.0f;
-    data.fillColorData.color.a = 1.0f;
-
-    NanoDraw_Draw(window->drawingContext, command, data);
-
-    command = SET_ORIGIN;
-    data.originData.x = 100;
-    data.originData.y = 100;
-
-    NanoDraw_Draw(window->drawingContext, command, data);
-
-    command = SET_SIZE;
-    data.sizeData.width = 100;
-    data.sizeData.height = 100;
-
-    NanoDraw_Draw(window->drawingContext, command, data);
-     
-    command = DRAW_RECT;
-
-    NanoDraw_Draw(window->drawingContext, command, data);
-
-    command = SET_TEXT;
-    data.textData.text = window->title;
-
-    NanoDraw_Draw(window->drawingContext, command, data);
-
-    command = SET_TYPEFACE;
-    data.typefaceData.typeface = typeface;
-
-    NanoDraw_Draw(window->drawingContext, command, data);
-
-    command = DRAW_TEXT;
-
-    NanoDraw_Draw(window->drawingContext, command, data);
-
-    //NanoDraw_SetOrigin(window->drawingContext, 1.0f, 0.0f);
-    //NanoDraw_DrawText(window->drawingContext, window->title);
 
 
-    
+    nGraphNode_h node = window->rootNode;
+    while (node != NULL)
+    {
+        NanoDraw_RenderNode(window->drawingContext, node);
+        node = NanoGraph_GetNextNode(node);
+    }
+
     NanoDraw_EndFrame(window->drawingContext);
-    
+
+
+
 }
