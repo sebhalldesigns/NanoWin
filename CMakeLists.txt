@@ -6,3 +6,6 @@ add_library(NanoWin STATIC
 target_include_directories(NanoWin PUBLIC
     include
 )
+
+include(cmake/Skia.cmake)
+include(cmake/ANGLE.cmake)
