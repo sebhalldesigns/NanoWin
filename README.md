@@ -1,2 +1,2 @@
 # NanoWin
-NanoWin - Lightweight Cross-Platform Windowing
+NanoWin - Lightweight, cross-platform windowing and graphics context creation
