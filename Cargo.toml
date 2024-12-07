@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+
+[target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.5.2"
 objc2-app-kit = { version = "0.2.2", features = ["all"] }
 objc2-foundation = { version = "0.2.2", features = ["all"] }
@@ -12,3 +14,5 @@ objc2-metal-kit = { version = "0.2.2", features = ["all"] }
 objc2-quartz-core = { version = "0.2.2", features = ["all"] }
 skia-safe = { version = "0.80.1", features = ["metal"] }
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+skia-safe = { version = "0.80.1", features = ["gl"] }
