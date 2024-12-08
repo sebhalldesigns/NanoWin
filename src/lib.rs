@@ -37,6 +37,13 @@ pub trait AppDelegate
     fn application_will_terminate(&self);
 }
 
+pub trait WindowDelegate 
+{
+    fn window_was_created(&self, window: Window);
+    fn window_did_appear(&self, window: Window);
+    fn window_did_resize(&self, window: Window);
+}
+
 pub struct Context 
 {
     title: String,
