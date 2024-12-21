@@ -47,13 +47,42 @@ fn load_wgl_function(name: &str) -> PROC
 {
     let name = CString::new(name).unwrap();
 
-    return unsafe { 
+    println!("Loading function: {}\n", name.to_str().unwrap()); 
+
+    let wgl_address = unsafe { 
         wglGetProcAddress(
             PCSTR(
                 name.as_ptr() as *const u8
             )
         )
     };
+
+    if wgl_address.is_some() 
+    {
+        return wgl_address;
+    }
+    else
+    {
+        let opengl32 = unsafe { LoadLibraryA(PCSTR("opengl32.dll".as_ptr() as *const u8)).unwrap() };
+
+        if opengl32.is_invalid() {
+            println!("Failed to load opengl32.dll!");
+            return None;
+        }
+    
+        let fallback = unsafe { 
+            GetProcAddress(opengl32, PCSTR(
+                name.as_ptr() as *const u8
+            )) 
+        };
+
+        return fallback;
+
+    }
+
+
+    
+    
 }
 
 fn load_skia_gl_function(name: &str) -> *const c_void 
@@ -64,8 +93,6 @@ fn load_skia_gl_function(name: &str) -> *const c_void
         println!("Failed to load function: {}", name);
         return std::ptr::null();
     }
-
-    println!("Loaded function: {}\n", name);
 
     return proc_address.unwrap() as *const c_void;
   
@@ -269,7 +296,7 @@ unsafe extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam:
             
 
             if let Some(window_data) = WINDOW_DATA {
-                
+
                 if SKIA_CONTEXT.is_none() {
 
                     let skia_backend = 
