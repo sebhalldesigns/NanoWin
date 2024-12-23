@@ -1,21 +1,24 @@
 use std::ffi::{CString, c_void};
 use std::ptr;
 use std::mem;
+use std::cell::Cell;
 
 
 use skia_safe::gpu::ganesh::context_options;
-use windows::core::*;
-use windows::Win32::Foundation::*;
-use windows::Win32::Graphics::Gdi::*;
-use windows::Win32::Graphics::OpenGL::*;
-use windows::Win32::System::LibraryLoader::*;
-use windows::Win32::UI::WindowsAndMessaging::*;
+use ::windows::core::*;
+use ::windows::Win32::Foundation::*;
+use ::windows::Win32::Graphics::Gdi::*;
+use ::windows::Win32::Graphics::OpenGL::*;
+use ::windows::Win32::System::LibraryLoader::*;
+use ::windows::Win32::UI::WindowsAndMessaging::*;
 
-use crate::{Context, AppDelegate, geometry::*};
+use crate::*;
 
 use skia_safe::{gpu, Canvas, Color, Paint, Point, Surface, SurfaceProps, TextBlob, RCHandle, gpu::ganesh::DirectContext  };
 
 
+static mut WINDOW_CLASS_NAME: Option<PCWSTR> = None;
+static mut HINSTANCE: Option<HINSTANCE> = None;
 static mut WINDOW_DATA: Option<PlatformWindow> = None;
 
 static mut SKIA_CONTEXT : Option<*mut DirectContext> = None;
@@ -155,7 +158,7 @@ unsafe fn create_opengl_context(hwnd: HWND) -> GlContext
     return GlContext { hdc, hglrc: modern_hglrc };
 }
 
-pub fn create_context(title: String) -> PlatformContext 
+pub fn create_context() -> PlatformContext 
 {
 
     let instance: HINSTANCE = unsafe { GetModuleHandleW(None).expect("failed to get module handle").into() };
@@ -178,6 +181,11 @@ pub fn create_context(title: String) -> PlatformContext
     };
 
 
+    unsafe {
+        WINDOW_CLASS_NAME = Some(window_class_name);
+        HINSTANCE = Some(instance);
+    }
+
     return PlatformContext 
     {
         hinstance: instance,
@@ -185,27 +193,8 @@ pub fn create_context(title: String) -> PlatformContext
     };
 }
 
-pub fn run(context: Context, app_delegate: Box<dyn AppDelegate>, window_size_request: Size) 
+pub fn run() 
 {
-
-    let initial_window = crate::Window 
-    {
-        title: context.title.clone(),
-        size: Size { width: window_size_request.width as f32, height: window_size_request.height as f32 },
-        platform_window: create_window(&context.platform_context, context.title.clone(), window_size_request)
-    };
-
-    unsafe {
-        WINDOW_DATA = Some(initial_window.platform_window.clone());
-    }
-    
-    unsafe {
-        _ = ShowWindow(initial_window.platform_window.handle, SW_SHOW);
-        _ = UpdateWindow(initial_window.platform_window.handle);
-    }
-
-    context.windows.set(vec![initial_window]);
-
 
     unsafe 
     {
@@ -218,14 +207,14 @@ pub fn run(context: Context, app_delegate: Box<dyn AppDelegate>, window_size_req
     
 }
 
-pub fn create_window(context: &PlatformContext, title: String, size: Size) -> PlatformWindow
+pub fn create_window(title: String, size: Size) -> PlatformWindow
 {
 
     let window_title: PCWSTR = PCWSTR::from_raw(HSTRING::from(title).as_ptr());
     let window: HWND = unsafe {
         CreateWindowExW(
             WINDOW_EX_STYLE::default(),
-            context.window_class_name,
+            unsafe { WINDOW_CLASS_NAME.unwrap() },
             window_title,
             WS_OVERLAPPEDWINDOW,
             CW_USEDEFAULT,
@@ -234,12 +223,18 @@ pub fn create_window(context: &PlatformContext, title: String, size: Size) -> Pl
             size.height as i32,
             None,
             None,
-            context.hinstance,
+            unsafe { HINSTANCE.unwrap() },
             None,
         ).expect("failed to create window")
     };
 
     let gl_context = unsafe { create_opengl_context(window) };
+
+    unsafe {
+        WINDOW_DATA = Some(PlatformWindow { handle: window, gl_context: gl_context });
+    }
+
+    unsafe { _ = ShowWindow(window, SW_SHOW) };
 
     return PlatformWindow 
     {
@@ -247,6 +242,8 @@ pub fn create_window(context: &PlatformContext, title: String, size: Size) -> Pl
         gl_context: gl_context
     };
 }
+
+
 
 unsafe extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT
 {

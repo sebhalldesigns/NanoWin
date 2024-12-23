@@ -10,7 +10,7 @@ use nsappdelegate::NSAppDelegate;
 mod nsmtkview;
 use nsmtkview::NSMtkView;
 
-use crate::{Context, AppDelegate, geometry::*};
+use crate::{Context, AppDelegate, WindowDelegate, geometry::*};
 
 use std::cell::Cell;
 use objc2::rc::{Retained, Allocated};
@@ -59,7 +59,7 @@ pub fn create_context(title: String) -> PlatformContext
     }
 }
 
-pub fn run(context: Context, app_delegate: Box<dyn AppDelegate>, window_size_request: Size) 
+pub fn run(context: Context, app_delegate: Box<dyn AppDelegate>, window_delegate: Box<dyn WindowDelegate>, window_size_request: Size) 
 {
     context.platform_context.app_delegate.set_app_delegate(app_delegate);
 
