@@ -1,2 +1,2 @@
 # NanoWin
-A lightweight cross-platform windowing library
+NanoWin - Lightweight, Cross-Platform Windowing and Events
