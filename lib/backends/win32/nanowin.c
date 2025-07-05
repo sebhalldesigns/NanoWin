@@ -356,6 +356,17 @@ void nkWindow_Destroy(nkWindow_t *window)
     DestroyWindow(window->WindowHandle);
 }
 
+void nkWindow_RequestRedraw(nkWindow_t *window)
+{
+    if (window == NULL)
+    {
+        return; /* nothing to do */
+    }
+
+    /* request a redraw by invalidating the window */
+    InvalidateRect(window->WindowHandle, NULL, TRUE);
+}
+
 bool nkWindow_IsPointerActionDown(nkWindow_t *window, nkPointerAction_t action)
 {
     switch (action)
@@ -591,8 +602,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             else
             {
-                /* handle as a single codepoint */
-                if (window->CodepointInputCallback)
+                /* handle as a single codepoint, filtering out control keys such as delete and backspace */
+                if (window->CodepointInputCallback && u16Codepoint > 0x1F)
                 {
                     window->CodepointInputCallback(window, u16Codepoint);
                 }
@@ -683,7 +694,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             BeginPaint(hwnd, &window->PaintStruct);
 
-            glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+            glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT);
 
             glViewport(0, 0, window->Width, window->Height);

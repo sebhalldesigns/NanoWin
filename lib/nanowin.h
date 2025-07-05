@@ -198,6 +198,9 @@ void nkWindow_SetSize(nkWindow_t *window, float width, float height);
 void nkWindow_SetVisibility(nkWindow_t *window, nkWindowVisibility_t visibility);
 void nkWindow_SetFocus(nkWindow_t *window, nkWindowFocus_t focus);
 void nkWindow_Destroy(nkWindow_t *window);
+
+void nkWindow_RequestRedraw(nkWindow_t *window);
+
 bool nkWindow_IsPointerActionDown(nkWindow_t *window, nkPointerAction_t action);
 bool nkWindow_IsKeyDown(nkWindow_t *window, uint32_t keycode);
 
