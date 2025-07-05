@@ -2,12 +2,12 @@
 **
 ** NanoKit Library Source File
 **
-** File         :  app.c
-** Module       :  app
+** File         :  nanowin.c
+** Module       :  nanowin
 ** Author       :  SH
 ** Created      :  2025-02-23 (YYYY-MM-DD)
 ** License      :  MIT
-** Description  :  NanoKit App API
+** Description  :  NanoKit Window API
 **
 ***************************************************************/
 

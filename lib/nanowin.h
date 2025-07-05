@@ -11,8 +11,8 @@
 **
 ***************************************************************/
 
-#ifndef WINDOW_H
-#define WINDOW_H
+#ifndef NANOWIN_H
+#define NANOWIN_H
 
 /***************************************************************
 ** MARK: INCLUDES
@@ -34,6 +34,7 @@
     #include <extern/glad/glad.h>
 #endif
 
+#include <nanodraw.h>
 
 /***************************************************************
 ** MARK: CONSTANTS & MACROS
@@ -159,6 +160,8 @@ typedef struct nkWindow_t
     float Width;
     float Height;
 
+    nkDrawContext_t DrawContext;
+
     nkWindowVisibility_t Visibility;
     nkWindowFocus_t Focus;
 
@@ -211,4 +214,4 @@ bool nkWindow_PollEvents(void);
 }
 #endif
 
-#endif /* WINDOW_H */
+#endif /* NANOWIN_H */

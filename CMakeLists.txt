@@ -6,7 +6,6 @@ if (WIN32)
 
     set(NANOWIN_SOURCES
         lib/backends/win32/nanowin.c
-        lib/extern/glad/glad.c
     )
 
     set(NANOWIN_LIBS
@@ -39,10 +38,11 @@ add_library(NanoWin STATIC
     ${NANOWIN_SOURCES}
 )
 
-target_link_libraries(NanoWin PRIVATE
-    ${NANOWIN_LIBS}
-)
-
 target_include_directories(NanoWin PUBLIC
     lib
+)
+
+target_link_libraries(NanoWin PUBLIC
+    ${NANOWIN_LIBS}
+    NanoDraw
 )
