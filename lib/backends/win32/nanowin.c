@@ -16,6 +16,7 @@
 ***************************************************************/
 
 #include <nanowin.h>
+#include <nanodraw.h>
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -127,6 +128,14 @@ bool nkWindow_Create(nkWindow_t *window, const char *title, float width, float h
 
     HINSTANCE instance = GetModuleHandle(NULL);
 
+    RECT desiredClientRect;
+    desiredClientRect.left = 0;
+    desiredClientRect.top = 0;
+    desiredClientRect.right = (LONG)width;
+    desiredClientRect.bottom = (LONG)height;
+
+    AdjustWindowRect(&desiredClientRect, WS_OVERLAPPEDWINDOW, FALSE);
+
     /* allocate and poulate a wide string */
     LPWSTR wtitle = CreateWideString(title);
 
@@ -136,7 +145,8 @@ bool nkWindow_Create(nkWindow_t *window, const char *title, float width, float h
         wtitle, 
         WS_OVERLAPPEDWINDOW, 
         CW_USEDEFAULT, CW_USEDEFAULT, 
-        (int)width, (int)height, 
+        (int)desiredClientRect.right - (int)desiredClientRect.left, 
+        (int)desiredClientRect.bottom - (int)desiredClientRect.top,
         NULL, 
         NULL, 
         instance, 
@@ -192,6 +202,8 @@ bool nkWindow_Create(nkWindow_t *window, const char *title, float width, float h
         fprintf(stderr, "Failed to initialize GLAD for OpenGL 3.3.");
         return false;
     }
+
+    nkDraw_CreateContext(&window->DrawContext);
 
     ShowWindow(hwnd, SW_SHOW);
 
