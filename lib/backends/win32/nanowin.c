@@ -26,6 +26,10 @@
 ** MARK: CONSTANTS & MACROS
 ***************************************************************/
 
+/* to handle unicode input */
+#define IS_HIGH_SURROGATE(wch) (((wch) >= 0xD800) && ((wch) <= 0xDBFF))
+#define IS_LOW_SURROGATE(wch)  (((wch) >= 0xDC00) && ((wch) <= 0xDFFF))
+
 #define WGL_CONTEXT_MAJOR_VERSION_ARB       (0x2091U)
 #define WGL_CONTEXT_MINOR_VERSION_ARB       (0x2092U)
 #define WGL_CONTEXT_PROFILE_MASK_ARB        (0x9126U)
@@ -41,10 +45,8 @@
 #define WGL_FULL_ACCELERATION_ARB           (0x2027U)
 #define WGL_TYPE_RGBA_ARB                   (0x202BU)
 
-typedef HGLRC WINAPI wglCreateContextAttribsARB_t(HDC hdc, HGLRC hShareContext, const int *attribList);
-typedef BOOL WINAPI wglChoosePixelFormatARB_t(HDC hdc, const int *piAttribIList, const FLOAT *pfAttribFList, UINT nMaxFormats, int *piFormats, UINT *nNumFormats);
-
-const int pixelFormatAttribs[] = {
+const int pixelFormatAttribs[] = 
+{
     WGL_DRAW_TO_WINDOW_ARB,     GL_TRUE,
     WGL_SUPPORT_OPENGL_ARB,     GL_TRUE,
     WGL_DOUBLE_BUFFER_ARB,      GL_TRUE,
@@ -56,7 +58,8 @@ const int pixelFormatAttribs[] = {
     0
 };
 
-const int gl33Attribs[] = {
+const int gl33Attribs[] = 
+{
     WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
     WGL_CONTEXT_MINOR_VERSION_ARB, 3,
     WGL_CONTEXT_PROFILE_MASK_ARB,  WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
@@ -68,6 +71,9 @@ const wchar_t *WINDOW_CLASS_NAME = L"NanoKitWindowClass";
 /***************************************************************
 ** MARK: TYPEDEFS
 ***************************************************************/
+
+typedef HGLRC WINAPI wglCreateContextAttribsARB_t(HDC hdc, HGLRC hShareContext, const int *attribList);
+typedef BOOL WINAPI wglChoosePixelFormatARB_t(HDC hdc, const int *piAttribIList, const FLOAT *pfAttribFList, UINT nMaxFormats, int *piFormats, UINT *nNumFormats);
 
 /***************************************************************
 ** MARK: STATIC VARIABLES
@@ -84,6 +90,8 @@ static nkWindow_t *windowList = NULL;
 
 static HGLRC currentGlrc = NULL;
 
+static uint16_t highUnicodeSurrogate = 0;
+
 /***************************************************************
 ** MARK: STATIC FUNCTION DEFS
 ***************************************************************/
@@ -96,6 +104,7 @@ static LPWSTR CreateWideString(const char* str);
 static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 static uint32_t GetNkKeycodeFromWin32(WPARAM wParam);
+static WPARAM GetWin32KeycodeFromNk(WPARAM wParam);
 /***************************************************************
 ** MARK: PUBLIC FUNCTIONS
 ***************************************************************/
@@ -147,25 +156,31 @@ bool nkWindow_Create(nkWindow_t *window, const char *title, float width, float h
     int pixelFormat;
     UINT numFormats;
     wglChoosePixelFormatARB(gldc, pixelFormatAttribs, 0, 1, &pixelFormat, &numFormats);
-    if (!numFormats) {
+
+    if (!numFormats) 
+    {
         fprintf(stderr, "Failed to set the OpenGL 3.3 pixel format.");
         return 0;
     }
 
     PIXELFORMATDESCRIPTOR pfd;
     DescribePixelFormat(gldc, pixelFormat, sizeof(pfd), &pfd);
-    if (!SetPixelFormat(gldc, pixelFormat, &pfd)) {
+
+    if (!SetPixelFormat(gldc, pixelFormat, &pfd)) 
+    {
         fprintf(stderr, "Failed to set the OpenGL 3.3 pixel format.");
         return 0;
     }
 
     HGLRC glrc = wglCreateContextAttribsARB(gldc, 0, gl33Attribs);
-    if (!glrc) {
+    if (!glrc) 
+    {
         fprintf(stderr, "Failed to create OpenGL 3.3 context.");
         return 0;
     }
 
-    if (!wglMakeCurrent(gldc, glrc)) {
+    if (!wglMakeCurrent(gldc, glrc)) 
+    {
         fprintf(stderr, "Failed to activate OpenGL 3.3 rendering context.");
         return 0;
     }
@@ -341,9 +356,61 @@ void nkWindow_Destroy(nkWindow_t *window)
     DestroyWindow(window->WindowHandle);
 }
 
+bool nkWindow_IsPointerActionDown(nkWindow_t *window, nkPointerAction_t action)
+{
+    switch (action)
+    {
+        case NK_POINTER_ACTION_PRIMARY:
+        {
+            return (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0; /* check if the left mouse button is down */
+        } break;
+
+        case NK_POINTER_ACTION_SECONDARY:
+        {
+            return (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0; /* check if the right mouse button is down */
+        } break;
+
+        case NK_POINTER_ACTION_TERTIARY:
+        {
+            return (GetAsyncKeyState(VK_MBUTTON) & 0x8000) != 0; /* check if the middle mouse button is down */
+        } break;
+
+        case NK_POINTER_ACTION_EXTENDED_1:
+        {
+            return (GetAsyncKeyState(VK_XBUTTON1) & 0x8000) != 0; /* check if the first extended button is down */
+        } break;
+
+        case NK_POINTER_ACTION_EXTENDED_2:
+        {
+            return (GetAsyncKeyState(VK_XBUTTON2) & 0x8000) != 0; /* check if the second extended button is down */
+        } break;
+
+        default:
+        {
+            return false; /* invalid action */
+        } break;
+    }
+}
+
+bool nkWindow_IsKeyDown(nkWindow_t *window, uint32_t keycode)
+{
+    WPARAM wParam = GetWin32KeycodeFromNk(keycode);
+    if (wParam != 0)
+    {
+        return (GetAsyncKeyState(wParam) & 0x8000) != 0; /* check if the key is down */
+    }
+    else
+    {
+        return false; /* invalid keycode */
+    }
+}
+
 bool nkWindow_PollEvents(void)
 {
     MSG msg;
+    
+    /* reset the high surrogate for the next event loop */
+    highUnicodeSurrogate = 0;
     
     while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
     {
@@ -380,7 +447,7 @@ static void InitWin32()
     windowClass.hInstance = GetModuleHandle(0);
     windowClass.lpszClassName = WINDOW_CLASS_NAME;
 
-    RegisterClass(&windowClass);
+    RegisterClassW(&windowClass);
 }
 
 
@@ -395,7 +462,8 @@ static bool InitOpenGL()
         .lpszClassName = L"TempWindowClass",
     };
 
-    if (!RegisterClass(&tempWindowClass)) {
+    if (!RegisterClassW(&tempWindowClass)) 
+    {
         fprintf(stderr, "Failed to register window class");
         return false;
     }
@@ -415,7 +483,8 @@ static bool InitOpenGL()
         0
     );
 
-    if (!tempWindow) {
+    if (!tempWindow) 
+    {
         fprintf(stderr, "Failed to create temp window");
         return false;
     }
@@ -435,23 +504,29 @@ static bool InitOpenGL()
     };
 
     int pixelFormat = ChoosePixelFormat(tempDc, &pfd);
-    if (!pixelFormat) {
+
+    if (!pixelFormat) 
+    {
         fprintf(stderr, "Failed to find a suitable pixel format.");
         return false;
     }
 
-    if (!SetPixelFormat(tempDc, pixelFormat, &pfd)) {
+    if (!SetPixelFormat(tempDc, pixelFormat, &pfd)) 
+    {
         fprintf(stderr, "Failed to set the pixel format.");
         return false;
     }
 
     HGLRC tempContext = wglCreateContext(tempDc);
-    if (!tempContext) {
+
+    if (!tempContext) 
+    {
         fprintf(stderr, "Failed to create a dummy OpenGL rendering context.");
         return false;
     }
 
-    if (!wglMakeCurrent(tempDc, tempContext)) {
+    if (!wglMakeCurrent(tempDc, tempContext)) 
+    {
         fprintf(stderr, "Failed to activate dummy OpenGL rendering context.");
         return false;
     }
@@ -469,13 +544,7 @@ static bool InitOpenGL()
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-
-    if (uMsg == WM_UNICHAR)
-    {
-        printf ("WM_UNICHAR received: %u\n", wParam);
-    }
     /* first, try and find this window */
-
     nkWindow_t *window = NULL;
     for (nkWindow_t *current = windowList; current != NULL; current = current->Next)
     {
@@ -492,12 +561,76 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
 
     /* now, process the event if the window was found */
-
     switch (uMsg)
     {
+        case WM_CHAR:
+        {
+            uint16_t u16Codepoint = (uint16_t)wParam;
+
+            if (IS_HIGH_SURROGATE(u16Codepoint))
+            {
+                /* store the high surrogate */
+                highUnicodeSurrogate = u16Codepoint;
+            }
+            else if (IS_LOW_SURROGATE(u16Codepoint))
+            {
+                /* check if we have a high surrogate stored */
+                if (highUnicodeSurrogate != 0)
+                {
+                    /* combine the high and low surrogate to form a full codepoint */
+                    uint32_t codepoint = ((highUnicodeSurrogate - 0xD800) << 10) | (u16Codepoint - 0xDC00);
+                    codepoint += 0x10000; /* adjust to full Unicode codepoint range */
+
+                    if (window->CodepointInputCallback)
+                    {
+                        window->CodepointInputCallback(window, codepoint);
+                    }
+
+                    highUnicodeSurrogate = 0; /* reset the high surrogate */
+                }
+            }
+            else
+            {
+                /* handle as a single codepoint */
+                if (window->CodepointInputCallback)
+                {
+                    window->CodepointInputCallback(window, u16Codepoint);
+                }
+            }
+        } break;
 
         case WM_SIZE:
         {
+            nkWindowVisibility_t prevVisibility = window->Visibility;
+
+            switch (wParam)
+            {
+                case SIZE_MINIMIZED:
+                {
+                    window->Visibility = NK_WINDOW_VISIBILITY_MINIMIZED;
+                } break;
+
+                case SIZE_MAXIMIZED:
+                {
+                    window->Visibility = NK_WINDOW_VISIBILITY_MAXIMIZED;
+                } break;
+                    
+                case SIZE_RESTORED:
+                {
+                    window->Visibility = NK_WINDOW_VISIBILITY_VISIBLE;
+                } break;
+
+                default:
+                {
+                    /* do nothing */
+                } break;
+            }
+
+            if (window->VisibilityChangeCallback && window->Visibility != prevVisibility)
+            {
+                window->VisibilityChangeCallback(window, window->Visibility);
+            }
+
             float width = LOWORD(lParam);
             float height = HIWORD(lParam);
 
@@ -564,6 +697,24 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             EndPaint(hwnd, &window->PaintStruct);
             
         } break;    
+
+        case WM_ACTIVATE:
+        {
+            if (LOWORD(wParam) == WA_ACTIVE || LOWORD(wParam) == WA_CLICKACTIVE)
+            {
+                if (window->FocusChangeCallback)
+                {
+                    window->FocusChangeCallback(window, NK_WINDOW_FOCUS_FOCUSED);
+                }
+            }
+            else
+            {
+                if (window->FocusChangeCallback)
+                {
+                    window->FocusChangeCallback(window, NK_WINDOW_FOCUS_UNFOCUSED);
+                }
+            }
+        } break;
 
         case WM_MOUSEMOVE:
         {
@@ -689,15 +840,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
         } break;
 
-        case WM_UNICHAR:
-        {
-            uint32_t codepoint = (uint32_t)wParam;
-            if (window->CodepointInputCallback)
-            {
-                window->CodepointInputCallback(window, codepoint);
-            }
-        } break;
-
         default: 
         {
             /* do nothing */
@@ -769,6 +911,71 @@ static uint32_t GetNkKeycodeFromWin32(WPARAM wParam)
         default:
         {
             return 0;
+        } break;
+    }
+}
+
+static WPARAM GetWin32KeycodeFromNk(WPARAM wParam)
+{
+    switch (wParam)
+    {
+        case NK_KEYCODE_SPACE: return VK_SPACE;
+        case NK_KEYCODE_BACKSPACE: return VK_BACK;
+        case NK_KEYCODE_TAB: return VK_TAB;
+        case NK_KEYCODE_CLEAR: return VK_CLEAR;
+        case NK_KEYCODE_RETURN: return VK_RETURN;
+        case NK_KEYCODE_PAUSE: return VK_PAUSE;
+        case NK_KEYCODE_ESCAPE: return VK_ESCAPE;
+        case NK_KEYCODE_DELETE: return VK_DELETE;
+
+        case NK_KEYCODE_SHIFT: return VK_SHIFT;
+        case NK_KEYCODE_CONTROL: return VK_CONTROL;
+        case NK_KEYCODE_META: return VK_LWIN;
+        case NK_KEYCODE_ALT: return VK_MENU;
+
+        case NK_KEYCODE_PAGE_UP: return VK_PRIOR;
+        case NK_KEYCODE_PAGE_DOWN: return VK_NEXT;
+        case NK_KEYCODE_END: return VK_END;
+        case NK_KEYCODE_HOME: return VK_HOME;
+        case NK_KEYCODE_LEFT: return VK_LEFT;
+        case NK_KEYCODE_UP: return VK_UP;
+        case NK_KEYCODE_RIGHT: return VK_RIGHT;
+        case NK_KEYCODE_DOWN: return VK_DOWN;
+
+        case NK_KEYCODE_SELECT: return VK_SELECT;
+        case NK_KEYCODE_PRINT: return VK_PRINT;
+        case NK_KEYCODE_EXECUTE: return VK_EXECUTE;
+        case NK_KEYCODE_INSERT: return VK_INSERT;
+        case NK_KEYCODE_HELP: return VK_HELP;
+
+        case NK_KEYCODE_F1: return VK_F1;
+        case NK_KEYCODE_F2: return VK_F2;
+        case NK_KEYCODE_F3: return VK_F3;
+        case NK_KEYCODE_F4: return VK_F4;
+        case NK_KEYCODE_F5: return VK_F5;
+        case NK_KEYCODE_F6: return VK_F6;
+        case NK_KEYCODE_F7: return VK_F7;
+        case NK_KEYCODE_F8: return VK_F8;
+        case NK_KEYCODE_F9: return VK_F9;
+        case NK_KEYCODE_F10: return VK_F10;
+        case NK_KEYCODE_F11: return VK_F11;
+        case NK_KEYCODE_F12: return VK_F12;
+        case NK_KEYCODE_F13: return VK_F13;
+        case NK_KEYCODE_F14: return VK_F14;
+        case NK_KEYCODE_F15: return VK_F15;
+        case NK_KEYCODE_F16: return VK_F16;
+        case NK_KEYCODE_F17: return VK_F17;
+        case NK_KEYCODE_F18: return VK_F18;
+        case NK_KEYCODE_F19: return VK_F19;
+        case NK_KEYCODE_F20: return VK_F20;
+        case NK_KEYCODE_F21: return VK_F21;
+        case NK_KEYCODE_F22: return VK_F22;
+        case NK_KEYCODE_F23: return VK_F23;
+        case NK_KEYCODE_F24: return VK_F24;
+
+        default:
+        {
+            return 0; /* unknown keycode */
         } break;
     }
 }

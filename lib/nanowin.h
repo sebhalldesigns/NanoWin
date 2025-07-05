@@ -34,9 +34,15 @@
     #include <extern/glad/glad.h>
 #endif
 
+
 /***************************************************************
 ** MARK: CONSTANTS & MACROS
 ***************************************************************/
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /* General Keys */
 #define NK_KEYCODE_SPACE            (0x0001U)
@@ -159,6 +165,8 @@ typedef struct nkWindow_t
     nkWindowResizeCallback_t ResizeCallback;
     nkWindowDrawCallback_t DrawCallback;
     nkWindowCloseCallback_t CloseCallback;
+    nkWindowVisibilityChangeCallback_t VisibilityChangeCallback;
+    nkWindowFocusChangeCallback_t FocusChangeCallback;
 
     nkWindowPointerMoveCallback_t PointerMoveCallback;
     nkWindowPointerActionBeginCallback_t PointerActionBeginCallback;
@@ -190,8 +198,14 @@ void nkWindow_SetSize(nkWindow_t *window, float width, float height);
 void nkWindow_SetVisibility(nkWindow_t *window, nkWindowVisibility_t visibility);
 void nkWindow_SetFocus(nkWindow_t *window, nkWindowFocus_t focus);
 void nkWindow_Destroy(nkWindow_t *window);
+bool nkWindow_IsPointerActionDown(nkWindow_t *window, nkPointerAction_t action);
+bool nkWindow_IsKeyDown(nkWindow_t *window, uint32_t keycode);
 
 /* polls for events, returning true if application should stay open */
 bool nkWindow_PollEvents(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* WINDOW_H */
