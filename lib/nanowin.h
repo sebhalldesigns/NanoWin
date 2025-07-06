@@ -198,6 +198,8 @@ typedef struct nkWindow_t
     float Width;
     float Height;
 
+    nkVector4_t BackgroundColor;
+
     nkDrawContext_t DrawContext;
 
     nkWindowVisibility_t Visibility;

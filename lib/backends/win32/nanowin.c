@@ -219,6 +219,7 @@ bool nkWindow_Create(nkWindow_t *window, const char *title, float width, float h
     window->DrawingContext = gldc;
     window->GLRenderContext = glrc;
     window->CursorType = (uint32_t)IDC_ARROW; /* default cursor type */
+    window->BackgroundColor = NK_COLOR_WHITE; /* default background color */
 
     /* add this window to the linked list */
     if (windowList == NULL)
@@ -740,7 +741,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             BeginPaint(hwnd, &window->PaintStruct);
 
-            glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+            glClearColor(
+                window->BackgroundColor.r, 
+                window->BackgroundColor.g, 
+                window->BackgroundColor.b, 
+                window->BackgroundColor.a
+            );
             glClear(GL_COLOR_BUFFER_BIT);
 
             glViewport(0, 0, window->Width, window->Height);
