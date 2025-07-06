@@ -107,15 +107,15 @@ extern "C" {
 #define NK_KEYCODE_F24               (0x0058U)
 
 #if _WIN32
-    #define NK_CURSOR_ARROW_VALUE        ((uint32_t)IDC_ARROW)
-    #define NK_CURSOR_IBEAM_VALUE        ((uint32_t)IDC_IBEAM)
-    #define NK_CURSOR_HAND_VALUE         ((uint32_t)IDC_HAND)
-    #define NK_CURSOR_CROSSHAIR_VALUE    ((uint32_t)IDC_CROSS)
-    #define NK_CURSOR_SIZEALL_VALUE      ((uint32_t)IDC_SIZEALL)
-    #define NK_CURSOR_SIZENWSE_VALUE     ((uint32_t)IDC_SIZENWSE)
-    #define NK_CURSOR_SIZENESW_VALUE     ((uint32_t)IDC_SIZENESW)
-    #define NK_CURSOR_SIZEWE_VALUE       ((uint32_t)IDC_SIZEWE)   
-    #define NK_CURSOR_SIZENS_VALUE       ((uint32_t)IDC_SIZENS)
+    #define NK_CURSOR_ARROW_VALUE        ((uintptr_t)IDC_ARROW)
+    #define NK_CURSOR_IBEAM_VALUE        ((uintptr_t)IDC_IBEAM)
+    #define NK_CURSOR_HAND_VALUE         ((uintptr_t)IDC_HAND)
+    #define NK_CURSOR_CROSSHAIR_VALUE    ((uintptr_t)IDC_CROSS)
+    #define NK_CURSOR_SIZEALL_VALUE      ((uintptr_t)IDC_SIZEALL)
+    #define NK_CURSOR_SIZENWSE_VALUE     ((uintptr_t)IDC_SIZENWSE)
+    #define NK_CURSOR_SIZENESW_VALUE     ((uintptr_t)IDC_SIZENESW)
+    #define NK_CURSOR_SIZEWE_VALUE       ((uintptr_t)IDC_SIZEWE)   
+    #define NK_CURSOR_SIZENS_VALUE       ((uintptr_t)IDC_SIZENS)
 #else
     #define NK_CURSOR_ARROW_VALUE        (0x0000U)
     #define NK_CURSOR_IBEAM_VALUE        (0x0001U)
@@ -172,61 +172,63 @@ typedef enum
     NK_WINDOW_FOCUS_UNFOCUSED        = 0x02
 } nkWindowFocus_t;
 
+struct nkWindow_t; /* forward declaration */
+
 /* General Window Events */
-typedef void (*nkWindowResizeCallback_t)(void *window, float width, float height);
-typedef void (*nkWindowDrawCallback_t)(void *window);
-typedef void (*nkWindowCloseCallback_t)(void *window);
-typedef void (*nkWindowVisibilityChangeCallback_t)(void *window, nkWindowVisibility_t visibility);
-typedef void (*nkWindowFocusChangeCallback_t)(void *window, nkWindowFocus_t focus);
+typedef void (*nkWindowResizeCallback_t)(struct nkWindow_t *window, float width, float height);
+typedef void (*nkWindowDrawCallback_t)(struct nkWindow_t *window);
+typedef void (*nkWindowCloseCallback_t)(struct nkWindow_t *window);
+typedef void (*nkWindowVisibilityChangeCallback_t)(struct nkWindow_t *window, nkWindowVisibility_t visibility);
+typedef void (*nkWindowFocusChangeCallback_t)(struct nkWindow_t *window, nkWindowFocus_t focus);
 
 /* Pointer Events */
-typedef void (*nkWindowPointerMoveCallback_t)(void *window, float x, float y);
-typedef void (*nkWindowPointerActionBeginCallback_t)(void *window, nkPointerAction_t action, float x, float y);
-typedef void (*nkWindowPointerActionEndCallback_t)(void *window, nkPointerAction_t action, float x, float y);
-typedef void (*nkWindowScrollCallback_t)(void *window, float deltaX, float deltaY);
+typedef void (*nkWindowPointerMoveCallback_t)(struct nkWindow_t *window, float x, float y);
+typedef void (*nkWindowPointerActionBeginCallback_t)(struct nkWindow_t *window, nkPointerAction_t action, float x, float y);
+typedef void (*nkWindowPointerActionEndCallback_t)(struct nkWindow_t *window, nkPointerAction_t action, float x, float y);
+typedef void (*nkWindowScrollCallback_t)(struct nkWindow_t *window, float deltaX, float deltaY);
 
 /* Keyboard Events */
-typedef void (*nkWindowKeyDownCallback_t)(void *window, uint32_t keycode);
-typedef void (*nkWindowKeyUpCallback_t)(void *window, uint32_t keycode);
-typedef void (*nkWindowCodepointInputCallback_t)(void *window, uint32_t codepoint);
+typedef void (*nkWindowKeyDownCallback_t)(struct nkWindow_t *window, uint32_t keycode);
+typedef void (*nkWindowKeyUpCallback_t)(struct nkWindow_t *window, uint32_t keycode);
+typedef void (*nkWindowCodepointInputCallback_t)(struct nkWindow_t *window, uint32_t codepoint);
 
 typedef struct nkWindow_t
 {
-    struct nkWindow_t *Next;
+    struct nkWindow_t *next;
 
-    const char *Title;
-    float Width;
-    float Height;
+    const char *title;
+    float width;
+    float height;
 
-    nkVector4_t BackgroundColor;
+    nkColor_t backgroundColor;
 
-    nkDrawContext_t DrawContext;
+    nkDrawContext_t drawContext;
 
-    nkWindowVisibility_t Visibility;
-    nkWindowFocus_t Focus;
-    nkCursorType_t CursorType;
+    nkWindowVisibility_t visibility;
+    nkWindowFocus_t focus;
+    nkCursorType_t cursorType;
 
-    nkWindowResizeCallback_t ResizeCallback;
-    nkWindowDrawCallback_t DrawCallback;
-    nkWindowCloseCallback_t CloseCallback;
-    nkWindowVisibilityChangeCallback_t VisibilityChangeCallback;
-    nkWindowFocusChangeCallback_t FocusChangeCallback;
+    nkWindowResizeCallback_t resizeCallback;
+    nkWindowDrawCallback_t drawCallback;
+    nkWindowCloseCallback_t closeCallback;
+    nkWindowVisibilityChangeCallback_t visibilityChangeCallback;
+    nkWindowFocusChangeCallback_t focusChangeCallback;
 
-    nkWindowPointerMoveCallback_t PointerMoveCallback;
-    nkWindowPointerActionBeginCallback_t PointerActionBeginCallback;
-    nkWindowPointerActionEndCallback_t PointerActionEndCallback;
-    nkWindowScrollCallback_t ScrollCallback;
+    nkWindowPointerMoveCallback_t pointerMoveCallback;
+    nkWindowPointerActionBeginCallback_t pointerActionBeginCallback;
+    nkWindowPointerActionEndCallback_t pointerActionEndCallback;
+    nkWindowScrollCallback_t scrollCallback;
 
-    nkWindowKeyDownCallback_t KeyDownCallback;
-    nkWindowKeyUpCallback_t KeyUpCallback;
-    nkWindowCodepointInputCallback_t CodepointInputCallback;
+    nkWindowKeyDownCallback_t keyDownCallback;
+    nkWindowKeyUpCallback_t keyUpCallback;
+    nkWindowCodepointInputCallback_t codepointInputCallback;
 
     #if _WIN32
-        HWND WindowHandle;
-        HINSTANCE InstanceHandle;
-        HDC DrawingContext;
-        HGLRC GLRenderContext;
-        PAINTSTRUCT PaintStruct;
+        HWND windowHandle;
+        HINSTANCE instanceHandle;
+        HDC drawingContext;
+        HGLRC glRenderContext;
+        PAINTSTRUCT paintStruct;
     #else 
         #error "Unsupported platform!"
     #endif

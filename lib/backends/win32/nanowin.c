@@ -28,7 +28,15 @@
 ***************************************************************/
 
 /* to handle unicode input */
+#ifdef IS_HIGH_SURROGATE
+#undef IS_HIGH_SURROGATE
+#endif
+#ifdef IS_LOW_SURROGATE
+#undef IS_LOW_SURROGATE
+#endif
+
 #define IS_HIGH_SURROGATE(wch) (((wch) >= 0xD800) && ((wch) <= 0xDBFF))
+
 #define IS_LOW_SURROGATE(wch)  (((wch) >= 0xDC00) && ((wch) <= 0xDFFF))
 
 #define WGL_CONTEXT_MAJOR_VERSION_ARB       (0x2091U)
@@ -203,23 +211,23 @@ bool nkWindow_Create(nkWindow_t *window, const char *title, float width, float h
         return false;
     }
 
-    nkDraw_CreateContext(&window->DrawContext);
+    nkDraw_CreateContext(&window->drawContext);
 
     ShowWindow(hwnd, SW_SHOW);
 
     /* populate the window contents */
-    window->Next = NULL;
-    window->Title = title;
-    window->Width = width;
-    window->Height = height;
-    window->Visibility = NK_WINDOW_VISIBILITY_VISIBLE;
-    window->Focus = NK_WINDOW_FOCUS_FOCUSED;
-    window->WindowHandle = hwnd;
-    window->InstanceHandle = instance;
-    window->DrawingContext = gldc;
-    window->GLRenderContext = glrc;
-    window->CursorType = (uint32_t)IDC_ARROW; /* default cursor type */
-    window->BackgroundColor = NK_COLOR_WHITE; /* default background color */
+    window->next = NULL;
+    window->title = title;
+    window->width = width;
+    window->height = height;
+    window->visibility = NK_WINDOW_VISIBILITY_VISIBLE;
+    window->focus = NK_WINDOW_FOCUS_FOCUSED;
+    window->windowHandle = hwnd;
+    window->instanceHandle = instance;
+    window->drawingContext = gldc;
+    window->glRenderContext = glrc;
+    window->cursorType = (uintptr_t)IDC_ARROW; /* default cursor type */
+    window->backgroundColor = NK_COLOR_WHITE; /* default background color */
 
     /* add this window to the linked list */
     if (windowList == NULL)
@@ -229,11 +237,11 @@ bool nkWindow_Create(nkWindow_t *window, const char *title, float width, float h
     else
     {
         nkWindow_t *current = windowList;
-        while (current->Next != NULL)
+        while (current->next != NULL)
         {
-            current = current->Next;
+            current = current->next;
         }
-        current->Next = window;
+        current->next = window;
     }
 
     return true;
@@ -250,11 +258,11 @@ void nkWindow_SetTitle(nkWindow_t *window, const char *title)
     LPWSTR wtitle = CreateWideString(title);
 
     /* set the window title */
-    SetWindowText(window->WindowHandle, wtitle);
+    SetWindowText(window->windowHandle, wtitle);
 
     free(wtitle); /* IMPORTANT: free the allocated wstring title */
 
-    window->Title = title; /* update the title in the window struct */
+    window->title = title; /* update the title in the window struct */
 }
 
 void nkWindow_SetSize(nkWindow_t *window, float width, float height)
@@ -266,7 +274,7 @@ void nkWindow_SetSize(nkWindow_t *window, float width, float height)
 
     /* set the window size */
     SetWindowPos(
-        window->WindowHandle, 
+        window->windowHandle, 
         NULL, 
         0, 0, 
         (int)width, (int)height, 
@@ -274,13 +282,13 @@ void nkWindow_SetSize(nkWindow_t *window, float width, float height)
     );
 
     /* update the width and height in the window struct */
-    window->Width = width;
-    window->Height = height;
+    window->width = width;
+    window->height = height;
 
     /* call the resize callback if it exists */
-    if (window->ResizeCallback)
+    if (window->resizeCallback)
     {
-        window->ResizeCallback(window, width, height);
+        window->resizeCallback(window, width, height);
     }
 }
 
@@ -296,27 +304,27 @@ void nkWindow_SetVisibility(nkWindow_t *window, nkWindowVisibility_t visibility)
     {
         case NK_WINDOW_VISIBILITY_VISIBLE:
         {
-            ShowWindow(window->WindowHandle, SW_SHOW);
+            ShowWindow(window->windowHandle, SW_SHOW);
         } break;
 
         case NK_WINDOW_VISIBILITY_HIDDEN:
         {
-            ShowWindow(window->WindowHandle, SW_HIDE);
+            ShowWindow(window->windowHandle, SW_HIDE);
         } break;
 
         case NK_WINDOW_VISIBILITY_MINIMIZED:
         {
-            ShowWindow(window->WindowHandle, SW_MINIMIZE);
+            ShowWindow(window->windowHandle, SW_MINIMIZE);
         } break;
 
         case NK_WINDOW_VISIBILITY_MAXIMIZED:
         {
-            ShowWindow(window->WindowHandle, SW_MAXIMIZE);
+            ShowWindow(window->windowHandle, SW_MAXIMIZE);
         } break;
 
         case NK_WINDOW_VISIBILITY_FULLSCREEN:
         {
-            ShowWindow(window->WindowHandle, SW_SHOWMAXIMIZED);
+            ShowWindow(window->windowHandle, SW_SHOWMAXIMIZED);
         } break;
 
         default:
@@ -325,7 +333,7 @@ void nkWindow_SetVisibility(nkWindow_t *window, nkWindowVisibility_t visibility)
         }
     }
 
-    window->Visibility = visibility; /* update the visibility in the window struct */
+    window->visibility = visibility; /* update the visibility in the window struct */
 }
 
 void nkWindow_SetFocus(nkWindow_t *window, nkWindowFocus_t focus)
@@ -340,7 +348,7 @@ void nkWindow_SetFocus(nkWindow_t *window, nkWindowFocus_t focus)
     {
         case NK_WINDOW_FOCUS_FOCUSED:
         {
-            SetFocus(window->WindowHandle);
+            SetFocus(window->windowHandle);
         } break;
 
         default:
@@ -350,7 +358,7 @@ void nkWindow_SetFocus(nkWindow_t *window, nkWindowFocus_t focus)
         } break;
     }
 
-    window->Focus = focus; /* update the focus in the window struct */
+    window->focus = focus; /* update the focus in the window struct */
 }
 
 void nkWindow_SetCursor(nkWindow_t *window, nkCursorType_t cursorType)
@@ -373,7 +381,7 @@ void nkWindow_SetCursor(nkWindow_t *window, nkCursorType_t cursorType)
         case NK_CURSOR_SIZEWE:
         case NK_CURSOR_SIZENS:
         {
-            window->CursorType = cursorType;
+            window->cursorType = cursorType;
         } break;
 
         default:
@@ -391,13 +399,13 @@ void nkWindow_Destroy(nkWindow_t *window)
     }
 
     /* call the close callback if it exists */
-    if (window->CloseCallback)
+    if (window->closeCallback)
     {
-        window->CloseCallback(window);
+        window->closeCallback(window);
     }
 
     /* destroy the window */
-    DestroyWindow(window->WindowHandle);
+    DestroyWindow(window->windowHandle);
 }
 
 void nkWindow_RequestRedraw(nkWindow_t *window)
@@ -408,7 +416,7 @@ void nkWindow_RequestRedraw(nkWindow_t *window)
     }
 
     /* request a redraw by invalidating the window */
-    InvalidateRect(window->WindowHandle, NULL, TRUE);
+    InvalidateRect(window->windowHandle, NULL, TRUE);
 }
 
 bool nkWindow_IsPointerActionDown(nkWindow_t *window, nkPointerAction_t action)
@@ -452,7 +460,7 @@ bool nkWindow_IsKeyDown(nkWindow_t *window, uint32_t keycode)
     WPARAM wParam = GetWin32KeycodeFromNk(keycode);
     if (wParam != 0)
     {
-        return (GetAsyncKeyState(wParam) & 0x8000) != 0; /* check if the key is down */
+        return (GetAsyncKeyState((int)wParam) & 0x8000) != 0; /* check if the key is down */
     }
     else
     {
@@ -604,9 +612,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     /* first, try and find this window */
     nkWindow_t *window = NULL;
-    for (nkWindow_t *current = windowList; current != NULL; current = current->Next)
+    for (nkWindow_t *current = windowList; current != NULL; current = current->next)
     {
-        if (current->WindowHandle == hwnd)
+        if (current->windowHandle == hwnd)
         {
             window = current;
             break;
@@ -639,9 +647,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     uint32_t codepoint = ((highUnicodeSurrogate - 0xD800) << 10) | (u16Codepoint - 0xDC00);
                     codepoint += 0x10000; /* adjust to full Unicode codepoint range */
 
-                    if (window->CodepointInputCallback)
+                    if (window->codepointInputCallback)
                     {
-                        window->CodepointInputCallback(window, codepoint);
+                        window->codepointInputCallback(window, codepoint);
                     }
 
                     highUnicodeSurrogate = 0; /* reset the high surrogate */
@@ -650,32 +658,32 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             else
             {
                 /* handle as a single codepoint, filtering out control keys such as delete and backspace */
-                if (window->CodepointInputCallback && u16Codepoint > 0x1F)
+                if (window->codepointInputCallback && u16Codepoint > 0x1F)
                 {
-                    window->CodepointInputCallback(window, u16Codepoint);
+                    window->codepointInputCallback(window, u16Codepoint);
                 }
             }
         } break;
 
         case WM_SIZE:
         {
-            nkWindowVisibility_t prevVisibility = window->Visibility;
+            nkWindowVisibility_t prevVisibility = window->visibility;
 
             switch (wParam)
             {
                 case SIZE_MINIMIZED:
                 {
-                    window->Visibility = NK_WINDOW_VISIBILITY_MINIMIZED;
+                    window->visibility = NK_WINDOW_VISIBILITY_MINIMIZED;
                 } break;
 
                 case SIZE_MAXIMIZED:
                 {
-                    window->Visibility = NK_WINDOW_VISIBILITY_MAXIMIZED;
+                    window->visibility = NK_WINDOW_VISIBILITY_MAXIMIZED;
                 } break;
                     
                 case SIZE_RESTORED:
                 {
-                    window->Visibility = NK_WINDOW_VISIBILITY_VISIBLE;
+                    window->visibility = NK_WINDOW_VISIBILITY_VISIBLE;
                 } break;
 
                 default:
@@ -684,80 +692,80 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 } break;
             }
 
-            if (window->VisibilityChangeCallback && window->Visibility != prevVisibility)
+            if (window->visibilityChangeCallback && window->visibility != prevVisibility)
             {
-                window->VisibilityChangeCallback(window, window->Visibility);
+                window->visibilityChangeCallback(window, window->visibility);
             }
 
             float width = LOWORD(lParam);
             float height = HIWORD(lParam);
 
-            window->Width = width;
-            window->Height = height;
+            window->width = width;
+            window->height = height;
 
-            if (window->ResizeCallback)
+            if (window->resizeCallback)
             {
-                window->ResizeCallback(window, width, height);
+                window->resizeCallback(window, width, height);
             }
         } break;
 
         case WM_DESTROY:
         {
-            if (window->CloseCallback)
+            if (window->closeCallback)
             {
-                window->CloseCallback(window);
+                window->closeCallback(window);
             }
 
-            if (windowList == window && window->Next == NULL)
+            if (windowList == window && window->next == NULL)
             {
                 PostQuitMessage(0); /* quit if this is the last */
             }
             else if (windowList == window)
             {
-                windowList = window->Next; /* remove from head */
+                windowList = window->next; /* remove from head */
             }
             else
             {
                 nkWindow_t *prev = windowList;
-                while (prev->Next != window && prev->Next != NULL)
+                while (prev->next != window && prev->next != NULL)
                 {
-                    prev = prev->Next;
+                    prev = prev->next;
                 }
 
-                if (prev->Next == window)
+                if (prev->next == window)
                 {
-                    prev->Next = window->Next; /* remove from middle or end */
+                    prev->next = window->next; /* remove from middle or end */
                 }
             }
         } break;
 
         case WM_PAINT:
         {
-            if (currentGlrc != window->GLRenderContext)
+            if (currentGlrc != window->glRenderContext)
             {
-                wglMakeCurrent(window->DrawingContext, window->GLRenderContext);
-                currentGlrc = window->GLRenderContext;
+                wglMakeCurrent(window->drawingContext, window->glRenderContext);
+                currentGlrc = window->glRenderContext;
             }
 
-            BeginPaint(hwnd, &window->PaintStruct);
+            BeginPaint(hwnd, &window->paintStruct);
 
             glClearColor(
-                window->BackgroundColor.r, 
-                window->BackgroundColor.g, 
-                window->BackgroundColor.b, 
-                window->BackgroundColor.a
+                window->backgroundColor.r, 
+                window->backgroundColor.g, 
+                window->backgroundColor.b, 
+                window->backgroundColor.a
             );
             glClear(GL_COLOR_BUFFER_BIT);
 
-            glViewport(0, 0, window->Width, window->Height);
+            glViewport(0, 0, (int)window->width, (int)window->height);
 
-            if (window->DrawCallback)
+            if (window->drawCallback)
             {
-                window->DrawCallback(window);
+                window->drawCallback(window);
             }
 
-            SwapBuffers(window->DrawingContext);
-            EndPaint(hwnd, &window->PaintStruct);
+            SwapBuffers(window->drawingContext);
+            EndPaint(hwnd, &window->paintStruct);
             
         } break;    
         
@@ -766,7 +774,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             if (LOWORD(lParam) == HTCLIENT)
             {
                 
-                SetCursor(LoadCursor(NULL, (LPCTSTR)window->CursorType));
+                SetCursor(LoadCursor(NULL, (LPCTSTR)window->cursorType));
                 return TRUE; /* indicate that we handled the cursor */
             }
         } break;
@@ -775,76 +783,76 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
             if (LOWORD(wParam) == WA_ACTIVE || LOWORD(wParam) == WA_CLICKACTIVE)
             {
-                if (window->FocusChangeCallback)
+                if (window->focusChangeCallback)
                 {
-                    window->FocusChangeCallback(window, NK_WINDOW_FOCUS_FOCUSED);
+                    window->focusChangeCallback(window, NK_WINDOW_FOCUS_FOCUSED);
                 }
             }
             else
             {
-                if (window->FocusChangeCallback)
+                if (window->focusChangeCallback)
                 {
-                    window->FocusChangeCallback(window, NK_WINDOW_FOCUS_UNFOCUSED);
+                    window->focusChangeCallback(window, NK_WINDOW_FOCUS_UNFOCUSED);
                 }
             }
         } break;
 
         case WM_MOUSEMOVE:
         {
-            float x = GET_X_LPARAM(lParam);
-            float y = GET_Y_LPARAM(lParam);
+            float x = (float)GET_X_LPARAM(lParam);
+            float y = (float)GET_Y_LPARAM(lParam);
 
-            if (window->PointerMoveCallback)
+            if (window->pointerMoveCallback)
             {
-                window->PointerMoveCallback(window, x, y);
+                window->pointerMoveCallback(window, x, y);
             }
         } break;
 
         case WM_LBUTTONDOWN:
         {
-            if (window->PointerActionBeginCallback)
+            if (window->pointerActionBeginCallback)
             {
-                window->PointerActionBeginCallback(window, NK_POINTER_ACTION_PRIMARY, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+                window->pointerActionBeginCallback(window, NK_POINTER_ACTION_PRIMARY, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
             }
         } break;
 
         case WM_LBUTTONUP:
         {
-            if (window->PointerActionEndCallback)
+            if (window->pointerActionEndCallback)
             {
-                window->PointerActionEndCallback(window, NK_POINTER_ACTION_PRIMARY, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+                window->pointerActionEndCallback(window, NK_POINTER_ACTION_PRIMARY, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
             }
         } break;
 
         case WM_RBUTTONDOWN:
         {
-            if (window->PointerActionBeginCallback)
+            if (window->pointerActionBeginCallback)
             {
-                window->PointerActionBeginCallback(window, NK_POINTER_ACTION_SECONDARY, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+                window->pointerActionBeginCallback(window, NK_POINTER_ACTION_SECONDARY, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
             }
         } break;
 
         case WM_RBUTTONUP:
         {
-            if (window->PointerActionEndCallback)
+            if (window->pointerActionEndCallback)
             {
-                window->PointerActionEndCallback(window, NK_POINTER_ACTION_SECONDARY, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+                window->pointerActionEndCallback(window, NK_POINTER_ACTION_SECONDARY, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
             }
         } break;
 
         case WM_MBUTTONDOWN:
         {
-            if (window->PointerActionBeginCallback)
+            if (window->pointerActionBeginCallback)
             {
-                window->PointerActionBeginCallback(window, NK_POINTER_ACTION_TERTIARY, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+                window->pointerActionBeginCallback(window, NK_POINTER_ACTION_TERTIARY, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
             }
         } break;
 
         case WM_MBUTTONUP:
         {
-            if (window->PointerActionEndCallback)
+            if (window->pointerActionEndCallback)
             {
-                window->PointerActionEndCallback(window, NK_POINTER_ACTION_TERTIARY, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+                window->pointerActionEndCallback(window, NK_POINTER_ACTION_TERTIARY, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
             }
         } break;
 
@@ -852,16 +860,16 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
             if (GET_XBUTTON_WPARAM(wParam) == XBUTTON1)
             {
-                if (window->PointerActionBeginCallback)
+                if (window->pointerActionBeginCallback)
                 {
-                    window->PointerActionBeginCallback(window, NK_POINTER_ACTION_EXTENDED_1, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+                    window->pointerActionBeginCallback(window, NK_POINTER_ACTION_EXTENDED_1, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
                 }
             }
             else if (GET_XBUTTON_WPARAM(wParam) == XBUTTON2)
             {
-                if (window->PointerActionBeginCallback)
+                if (window->pointerActionBeginCallback)
                 {
-                    window->PointerActionBeginCallback(window, NK_POINTER_ACTION_EXTENDED_2, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+                    window->pointerActionBeginCallback(window, NK_POINTER_ACTION_EXTENDED_2, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
                 }
             }
         } break;
@@ -870,16 +878,16 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
             if (GET_XBUTTON_WPARAM(wParam) == XBUTTON1)
             {
-                if (window->PointerActionEndCallback)
+                if (window->pointerActionEndCallback)
                 {
-                    window->PointerActionEndCallback(window, NK_POINTER_ACTION_EXTENDED_1, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+                    window->pointerActionEndCallback(window, NK_POINTER_ACTION_EXTENDED_1, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
                 }
             }
             else if (GET_XBUTTON_WPARAM(wParam) == XBUTTON2)
             {
-                if (window->PointerActionEndCallback)
+                if (window->pointerActionEndCallback)
                 {
-                    window->PointerActionEndCallback(window, NK_POINTER_ACTION_EXTENDED_2, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+                    window->pointerActionEndCallback(window, NK_POINTER_ACTION_EXTENDED_2, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
                 }
             }
         } break;
@@ -889,27 +897,27 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             float deltaX = 0.0f;
             float deltaY = (float)GET_WHEEL_DELTA_WPARAM(wParam) / WHEEL_DELTA;
 
-            if (window->ScrollCallback)
+            if (window->scrollCallback)
             {
-                window->ScrollCallback(window, deltaX, deltaY);
+                window->scrollCallback(window, deltaX, deltaY);
             }
         } break;
 
         case WM_KEYDOWN:
         {
             uint32_t keycode = GetNkKeycodeFromWin32(wParam);
-            if (window->KeyDownCallback)
+            if (window->keyDownCallback)
             {
-                window->KeyDownCallback(window, keycode);
+                window->keyDownCallback(window, keycode);
             }
         } break;
 
         case WM_KEYUP:
         {
             uint32_t keycode = GetNkKeycodeFromWin32(wParam);
-            if (window->KeyUpCallback)
+            if (window->keyUpCallback)
             {
-                window->KeyUpCallback(window, keycode);
+                window->keyUpCallback(window, keycode);
             }
         } break;
         
