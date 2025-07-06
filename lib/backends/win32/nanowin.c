@@ -218,6 +218,7 @@ bool nkWindow_Create(nkWindow_t *window, const char *title, float width, float h
     window->InstanceHandle = instance;
     window->DrawingContext = gldc;
     window->GLRenderContext = glrc;
+    window->CursorType = (uint32_t)IDC_ARROW; /* default cursor type */
 
     /* add this window to the linked list */
     if (windowList == NULL)
@@ -351,6 +352,36 @@ void nkWindow_SetFocus(nkWindow_t *window, nkWindowFocus_t focus)
     window->Focus = focus; /* update the focus in the window struct */
 }
 
+void nkWindow_SetCursor(nkWindow_t *window, nkCursorType_t cursorType)
+{
+    if (window == NULL)
+    {
+        return; /* nothing to do */
+    }
+
+    /* set the window cursor */
+    switch (cursorType)
+    {
+        case NK_CURSOR_ARROW:
+        case NK_CURSOR_IBEAM:
+        case NK_CURSOR_HAND:
+        case NK_CURSOR_CROSSHAIR:
+        case NK_CURSOR_SIZEALL:
+        case NK_CURSOR_SIZENWSE:
+        case NK_CURSOR_SIZENESW:
+        case NK_CURSOR_SIZEWE:
+        case NK_CURSOR_SIZENS:
+        {
+            window->CursorType = cursorType;
+        } break;
+
+        default:
+        {
+            
+        } break;
+    }
+}
+
 void nkWindow_Destroy(nkWindow_t *window)
 {
     if (window == NULL)
@@ -441,7 +472,7 @@ bool nkWindow_PollEvents(void)
         {
             return false;
         }
-            
+
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
@@ -469,6 +500,7 @@ static void InitWin32()
     windowClass.lpfnWndProc = WindowProc;
     windowClass.hInstance = GetModuleHandle(0);
     windowClass.lpszClassName = WINDOW_CLASS_NAME;
+    windowClass.hCursor = NULL;
 
     RegisterClassW(&windowClass);
 }
@@ -483,6 +515,7 @@ static bool InitOpenGL()
         .lpfnWndProc = DefWindowProc,
         .hInstance = GetModuleHandle(0),
         .lpszClassName = L"TempWindowClass",
+        .hCursor = NULL
     };
 
     if (!RegisterClassW(&tempWindowClass)) 
@@ -567,6 +600,7 @@ static bool InitOpenGL()
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+
     /* first, try and find this window */
     nkWindow_t *window = NULL;
     for (nkWindow_t *current = windowList; current != NULL; current = current->Next)
@@ -720,6 +754,16 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             EndPaint(hwnd, &window->PaintStruct);
             
         } break;    
+        
+        case WM_SETCURSOR:
+        {
+            if (LOWORD(lParam) == HTCLIENT)
+            {
+                
+                SetCursor(LoadCursor(NULL, (LPCTSTR)window->CursorType));
+                return TRUE; /* indicate that we handled the cursor */
+            }
+        } break;
 
         case WM_ACTIVATE:
         {
@@ -862,7 +906,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 window->KeyUpCallback(window, keycode);
             }
         } break;
-
+        
         default: 
         {
             /* do nothing */

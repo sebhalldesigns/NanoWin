@@ -106,9 +106,47 @@ extern "C" {
 #define NK_KEYCODE_F23               (0x0057U)
 #define NK_KEYCODE_F24               (0x0058U)
 
+#if _WIN32
+    #define NK_CURSOR_ARROW_VALUE        ((uint32_t)IDC_ARROW)
+    #define NK_CURSOR_IBEAM_VALUE        ((uint32_t)IDC_IBEAM)
+    #define NK_CURSOR_HAND_VALUE         ((uint32_t)IDC_HAND)
+    #define NK_CURSOR_CROSSHAIR_VALUE    ((uint32_t)IDC_CROSS)
+    #define NK_CURSOR_SIZEALL_VALUE      ((uint32_t)IDC_SIZEALL)
+    #define NK_CURSOR_SIZENWSE_VALUE     ((uint32_t)IDC_SIZENWSE)
+    #define NK_CURSOR_SIZENESW_VALUE     ((uint32_t)IDC_SIZENESW)
+    #define NK_CURSOR_SIZEWE_VALUE       ((uint32_t)IDC_SIZEWE)   
+    #define NK_CURSOR_SIZENS_VALUE       ((uint32_t)IDC_SIZENS)
+#else
+    #define NK_CURSOR_ARROW_VALUE        (0x0000U)
+    #define NK_CURSOR_IBEAM_VALUE        (0x0001U)
+    #define NK_CURSOR_HAND_VALUE         (0x0002U)
+    #define NK_CURSOR_CROSSHAIR_VALUE    (0x0003U)
+    #define NK_CURSOR_SIZEALL_VALUE      (0x0004U)
+    #define NK_CURSOR_SIZENWSE_VALUE     (0x0005U)
+    #define NK_CURSOR_SIZENESW_VALUE     (0x0006U)
+    #define NK_CURSOR_SIZEWE_VALUE       (0x0007U)
+    #define NK_CURSOR_SIZENS_VALUE       (0x0008U)
+#endif
+
+
+
+
 /***************************************************************
 ** MARK: TYPEDEFS
 ***************************************************************/
+
+typedef enum 
+{
+    NK_CURSOR_ARROW         = NK_CURSOR_ARROW_VALUE,
+    NK_CURSOR_IBEAM         = NK_CURSOR_IBEAM_VALUE,
+    NK_CURSOR_HAND          = NK_CURSOR_HAND_VALUE,
+    NK_CURSOR_CROSSHAIR     = NK_CURSOR_CROSSHAIR_VALUE,
+    NK_CURSOR_SIZEALL       = NK_CURSOR_SIZEALL_VALUE,
+    NK_CURSOR_SIZENWSE      = NK_CURSOR_SIZENWSE_VALUE,
+    NK_CURSOR_SIZENESW      = NK_CURSOR_SIZENESW_VALUE,
+    NK_CURSOR_SIZEWE        = NK_CURSOR_SIZEWE_VALUE,
+    NK_CURSOR_SIZENS        = NK_CURSOR_SIZENS_VALUE
+} nkCursorType_t;
 
 typedef enum
 {
@@ -164,6 +202,7 @@ typedef struct nkWindow_t
 
     nkWindowVisibility_t Visibility;
     nkWindowFocus_t Focus;
+    nkCursorType_t CursorType;
 
     nkWindowResizeCallback_t ResizeCallback;
     nkWindowDrawCallback_t DrawCallback;
@@ -200,6 +239,7 @@ void nkWindow_SetTitle(nkWindow_t *window, const char *title);
 void nkWindow_SetSize(nkWindow_t *window, float width, float height);
 void nkWindow_SetVisibility(nkWindow_t *window, nkWindowVisibility_t visibility);
 void nkWindow_SetFocus(nkWindow_t *window, nkWindowFocus_t focus);
+void nkWindow_SetCursor(nkWindow_t *window, nkCursorType_t cursorType);
 void nkWindow_Destroy(nkWindow_t *window);
 
 void nkWindow_RequestRedraw(nkWindow_t *window);
