@@ -35,6 +35,7 @@
 #endif
 
 #include <nanodraw.h>
+#include <nanoview.h>
 
 /***************************************************************
 ** MARK: CONSTANTS & MACROS
@@ -201,6 +202,7 @@ typedef struct nkWindow_t
     float height;
 
     nkColor_t backgroundColor;
+    nkView_t *rootView;
 
     nkDrawContext_t drawContext;
 
@@ -246,10 +248,13 @@ void nkWindow_SetFocus(nkWindow_t *window, nkWindowFocus_t focus);
 void nkWindow_SetCursor(nkWindow_t *window, nkCursorType_t cursorType);
 void nkWindow_Destroy(nkWindow_t *window);
 
-void nkWindow_RequestRedraw(nkWindow_t *window);
-
 bool nkWindow_IsPointerActionDown(nkWindow_t *window, nkPointerAction_t action);
 bool nkWindow_IsKeyDown(nkWindow_t *window, uint32_t keycode);
+
+void nkWindow_RequestRedraw(nkWindow_t *window);
+
+void nkWindow_RedrawViews(nkWindow_t *window);
+void nkWindow_LayoutViews(nkWindow_t *window);
 
 /* polls for events, returning true if application should stay open */
 bool nkWindow_PollEvents(void);

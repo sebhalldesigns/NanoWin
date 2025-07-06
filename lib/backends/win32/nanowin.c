@@ -114,6 +114,10 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
 static uint32_t GetNkKeycodeFromWin32(WPARAM wParam);
 static WPARAM GetWin32KeycodeFromNk(WPARAM wParam);
+
+static void MeasureWindow(nkWindow_t *window);
+static void ArrangeWindow(nkWindow_t *window);
+
 /***************************************************************
 ** MARK: PUBLIC FUNCTIONS
 ***************************************************************/
@@ -468,6 +472,50 @@ bool nkWindow_IsKeyDown(nkWindow_t *window, uint32_t keycode)
     }
 }
 
+void nkWindow_RedrawViews(nkWindow_t *window)
+{
+    if (window == NULL || window->rootView == NULL)
+    {
+        printf("Window contains no views!\n");
+        return;
+    }
+
+    nkView_t *view = window->rootView;
+
+    while (view)
+    {   
+
+        if (view->backgroundColor.a > 0.001f)
+        {
+            nkDraw_SetColor(&window->drawContext, view->backgroundColor);
+            nkDraw_Rect(&window->drawContext, view->frame.x, view->frame.y, view->frame.width, view->frame.height);
+        }
+       // printf("Rendered rect at (%f, %f) size (%f, %f)\n", view->Frame.Origin.X, view->Frame.Origin.Y, view->Frame.Size.Width, view->Frame.Size.Height);
+        //printf("Renderered color (%f, %f, %f, %f)\n", view->BackgroundColor.Red, view->BackgroundColor.Green, view->BackgroundColor.Blue, view->BackgroundColor.Alpha);
+
+        if (view->drawCallback)
+        {
+            view->drawCallback(view);
+        }
+
+        view = nkView_NextViewInTree(view);
+    }
+}
+
+void nkWindow_LayoutViews(nkWindow_t *window)
+{
+    if (window == NULL || window->rootView == NULL)
+    {
+        printf("Window contains no views!\n");
+        return;
+    }
+
+    window->rootView->frame = (nkRect_t){0, 0, window->width, window->height};
+
+    MeasureWindow(window);
+    ArrangeWindow(window);
+}
+
 bool nkWindow_PollEvents(void)
 {
     MSG msg;
@@ -492,6 +540,52 @@ bool nkWindow_PollEvents(void)
 /***************************************************************
 ** MARK: STATIC FUNCTIONS
 ***************************************************************/
+
+static void MeasureWindow(nkWindow_t *window)
+{
+    nkView_t *view = nkView_DeepestViewInTree(window->rootView);
+    
+    /* measure views in a bottom-up traversal */
+    while (view)
+    {
+        if (view->measureCallback)
+        {
+            view->measureCallback(view);
+        }
+
+        view = nkView_PreviousViewInTree(view);
+    }
+}
+
+static void ArrangeWindow(nkWindow_t *window)
+{
+
+    /* arrange views in a top-down traversal */
+
+    nkView_t *view = window->rootView;
+
+    if (window->rootView->sizeRequest.width > window->rootView->frame.width)
+    {
+        window->rootView->frame.width = window->rootView->sizeRequest.width;
+    }
+    
+    if (window->rootView->sizeRequest.height > window->rootView->frame.height)
+    {
+        window->rootView->frame.height = window->rootView->sizeRequest.height;
+    }
+
+    while (view)
+    {
+
+        if (view->arrangeCallback)
+        {
+            view->arrangeCallback(view);
+        }
+
+        view = nkView_NextViewInTree(view);
+    }
+}
+
 
 static LPWSTR CreateWideString(const char* str)
 {

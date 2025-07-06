@@ -45,4 +45,5 @@ target_include_directories(NanoWin PUBLIC
 target_link_libraries(NanoWin PUBLIC
     ${NANOWIN_LIBS}
     NanoDraw
+    NanoView
 )
