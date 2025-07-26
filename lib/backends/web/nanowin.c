@@ -50,7 +50,9 @@ static EmscriptenKeyboardEvent keyboardEvent;
 
 static void InitWeb(void);
 
+
 static EM_BOOL MouseCallback(int eventType, const EmscriptenMouseEvent* e, void* userData);
+static EM_BOOL TouchCallback(int eventType, const EmscriptenTouchEvent* e, void* userData);
 static EM_BOOL KeyCallback(int eventType, const EmscriptenKeyboardEvent* e, void* userData);
 static EM_BOOL ResizeCallback(int eventType, const EmscriptenUiEvent* e, void* userData);
 static EM_BOOL DrawCallback(double time, void* userData);
@@ -154,7 +156,8 @@ void nkWindow_RequestRedraw(nkWindow_t *window)
         return; /* nothing to do */
     }
 
-    emscripten_request_animation_frame(DrawCallback, NULL);
+    printf("Requesting redraw for window '%s'\n", window->title);
+    emscripten_request_animation_frame(DrawCallback, window);
 }
 
 bool nkWindow_IsPointerActionDown(nkWindow_t *window, nkPointerAction_t action)
@@ -214,8 +217,7 @@ void nkWindow_LayoutViews(nkWindow_t *window)
 
 bool nkWindow_PollEvents(void)
 {
-    nkWindow_LayoutViews(windowHandle);
-    nkWindow_RequestRedraw(windowHandle);
+    ResizeCallback(0, NULL, NULL); // Trigger resize to ensure window size is updated
     return false;
 }
 
@@ -275,8 +277,9 @@ static void InitWeb(void)
     emscripten_webgl_init_context_attributes(&webglAttributes);
     webglAttributes.majorVersion = 2;
     webglAttributes.minorVersion = 0;
-    webglAttributes.alpha = EM_FALSE; /* disable alpha to reduce resize artifacts */
     webglAttributes.enableExtensionsByDefault = true;
+    //webglAttributes.explicitSwapControl = 0; // Let browser handle it
+    //webglAttributes.renderViaOffscreenBackBuffer = 0; // Avoid unnecessary buffering
 
     webglContext = emscripten_webgl_create_context("#canvas", &webglAttributes);
     if (webglContext <= 0)
@@ -294,6 +297,9 @@ static void InitWeb(void)
     emscripten_set_mousemove_callback("#canvas", NULL, false, MouseCallback);
     emscripten_set_mousedown_callback("#canvas", NULL, false, MouseCallback);
     emscripten_set_mouseup_callback("#canvas", NULL, false, MouseCallback);
+    emscripten_set_touchstart_callback("#canvas", NULL, false, TouchCallback);
+    emscripten_set_touchend_callback("#canvas", NULL, false, TouchCallback);
+    emscripten_set_touchmove_callback("#canvas", NULL, false, TouchCallback);
     emscripten_set_keydown_callback("#canvas", NULL, false, KeyCallback);
     emscripten_set_keyup_callback("#canvas", NULL, false, KeyCallback);
     emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, false, ResizeCallback);
@@ -301,27 +307,84 @@ static void InitWeb(void)
 
 static EM_BOOL MouseCallback(int eventType, const EmscriptenMouseEvent* e, void* userData)
 {
-    //printf("Mouse event: %d at (%d, %d)\n", eventType, e->targetX, e->targetY);
+    printf("Mouse event: %d at (%d, %d)\n", eventType, e->targetX, e->targetY);
     if (windowHandle == NULL)
     {
         return false; /* no window to handle events for */
     }
 
+    nkWindow_t *window = windowHandle;
+
     switch (eventType)
     {
         case EMSCRIPTEN_EVENT_MOUSEDOWN:
         {
-            //nkWindow_PointerActionBegin(windowHandle, e->button, e->targetX, e->targetY);
+            if (window->pointerActionBeginCallback)
+            {
+                window->pointerActionBeginCallback(window, NK_POINTER_ACTION_PRIMARY, (float)e->targetX, (float)e->targetY);
+            }
         } break;
 
         case EMSCRIPTEN_EVENT_MOUSEUP:
         {
-            //nkWindow_PointerActionEnd(windowHandle, e->button, e->targetX, e->targetY);
+            if (window->pointerActionEndCallback)
+            {
+                window->pointerActionEndCallback(window, NK_POINTER_ACTION_PRIMARY, (float)e->targetX, (float)e->targetY);
+            }
         } break;
 
         case EMSCRIPTEN_EVENT_MOUSEMOVE:
         {
-            //nkWindow_PointerMove(windowHandle, e->targetX, e->targetY);
+            if (window->pointerMoveCallback)
+            {
+                window->pointerMoveCallback(window, (float)e->targetX, (float)e->targetY);
+            }
+        } break;
+
+        default:
+        {
+            return false; /* unhandled event */
+        } break; 
+            
+    }
+
+    return true;
+}
+
+static EM_BOOL TouchCallback(int eventType, const EmscriptenTouchEvent* e, void* userData)
+{
+    printf("Touch event: %d at (%d, %d)\n", eventType, e->touches[0].targetX, e->touches[0].targetY);
+    if (windowHandle == NULL)
+    {
+        return false; /* no window to handle events for */
+    }
+
+    nkWindow_t *window = windowHandle;
+
+    switch (eventType)
+    {
+        case EMSCRIPTEN_EVENT_TOUCHSTART:
+        {
+            if (window->pointerActionBeginCallback)
+            {
+                window->pointerActionBeginCallback(window, NK_POINTER_ACTION_PRIMARY, (float)e->touches[0].targetX, (float)e->touches[0].targetY);
+            }
+        } break;
+
+        case EMSCRIPTEN_EVENT_TOUCHEND:
+        {
+            if (window->pointerActionEndCallback)
+            {
+                window->pointerActionEndCallback(window, NK_POINTER_ACTION_PRIMARY, (float)e->touches[0].targetX, (float)e->touches[0].targetY);
+            }
+        } break;
+
+        case EMSCRIPTEN_EVENT_TOUCHMOVE:
+        {
+            if (window->pointerMoveCallback)
+            {
+                window->pointerMoveCallback(window, (float)e->touches[0].targetX, (float)e->touches[0].targetY);
+            }
         } break;
 
         default:
@@ -393,7 +456,6 @@ static EM_BOOL DrawCallback(double time, void* userData)
         /* If not, resize the canvas drawing buffer now, before we draw. */
         emscripten_set_canvas_element_size("#canvas", (int)window->width, (int)window->height);
     }
-    
 
     glClearColor(
         window->backgroundColor.r, 
