@@ -32,6 +32,11 @@
     #include <windowsx.h>
 
     #include <extern/glad/glad.h>
+
+#elif __EMSCRIPTEN__
+    #include <emscripten/emscripten.h>
+    #include <emscripten/html5.h>
+    #include <GLES3/gl3.h>
 #endif
 
 #include <nanodraw.h>
@@ -231,8 +236,6 @@ typedef struct nkWindow_t
         HDC drawingContext;
         HGLRC glRenderContext;
         PAINTSTRUCT paintStruct;
-    #else 
-        #error "Unsupported platform!"
     #endif
 } nkWindow_t;
 

@@ -1,0 +1,415 @@
+/***************************************************************
+**
+** NanoKit Library Source File
+**
+** File         :  nanowin.c
+** Module       :  nanowin
+** Author       :  SH
+** Created      :  2025-02-23 (YYYY-MM-DD)
+** License      :  MIT
+** Description  :  NanoKit Window API
+**
+***************************************************************/
+
+/***************************************************************
+** MARK: INCLUDES
+***************************************************************/
+
+#include <nanowin.h>
+#include <nanodraw.h>
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+/***************************************************************
+** MARK: CONSTANTS & MACROS
+***************************************************************/
+
+/***************************************************************
+** MARK: TYPEDEFS
+***************************************************************/
+
+/***************************************************************
+** MARK: STATIC VARIABLES
+***************************************************************/
+
+static bool initialized = false;
+
+static nkWindow_t *windowHandle = NULL;
+
+static EMSCRIPTEN_WEBGL_CONTEXT_HANDLE webglContext;
+static EmscriptenWebGLContextAttributes webglAttributes;
+static EmscriptenMouseEvent mouseEvent;
+static EmscriptenKeyboardEvent keyboardEvent;
+
+/***************************************************************
+** MARK: STATIC FUNCTION DEFS
+***************************************************************/
+
+static void InitWeb(void);
+
+static EM_BOOL MouseCallback(int eventType, const EmscriptenMouseEvent* e, void* userData);
+static EM_BOOL KeyCallback(int eventType, const EmscriptenKeyboardEvent* e, void* userData);
+static EM_BOOL ResizeCallback(int eventType, const EmscriptenUiEvent* e, void* userData);
+static EM_BOOL DrawCallback(double time, void* userData);
+
+static void MeasureWindow(nkWindow_t *window);
+static void ArrangeWindow(nkWindow_t *window);
+
+/***************************************************************
+** MARK: PUBLIC FUNCTIONS
+***************************************************************/
+
+bool nkWindow_Create(nkWindow_t *window, const char *title, float width, float height)
+{   
+    /* setup Web the first time this is run */
+    if (!initialized)
+    {
+        InitWeb();
+
+        initialized = true;
+    }
+
+    printf("Creating window '%s' with size %.2f x %.2f\n", title, width, height);
+
+    nkDraw_CreateContext(&window->drawContext);
+
+
+    windowHandle = window;
+
+    /* populate the window contents */
+    window->next = NULL;
+    window->title = title;
+    window->width = width;
+    window->height = height;
+    window->visibility = NK_WINDOW_VISIBILITY_VISIBLE;
+    window->focus = NK_WINDOW_FOCUS_FOCUSED;
+    window->backgroundColor = NK_COLOR_WHITE; /* default background color */
+
+    return true;
+}
+
+void nkWindow_SetTitle(nkWindow_t *window, const char *title)
+{
+    if (window == NULL || title == NULL)
+    {
+        return; /* nothing to do */
+    }
+
+}
+
+void nkWindow_SetSize(nkWindow_t *window, float width, float height)
+{
+    if (window == NULL)
+    {
+        return; /* nothing to do */
+    }
+
+}
+
+void nkWindow_SetVisibility(nkWindow_t *window, nkWindowVisibility_t visibility)
+{
+    if (window == NULL)
+    {
+        return; /* nothing to do */
+    }
+
+}
+
+void nkWindow_SetFocus(nkWindow_t *window, nkWindowFocus_t focus)
+{
+    if (window == NULL)
+    {
+        return; /* nothing to do */
+    }
+
+
+}
+
+void nkWindow_SetCursor(nkWindow_t *window, nkCursorType_t cursorType)
+{
+    if (window == NULL)
+    {
+        return; /* nothing to do */
+    }
+
+    
+}
+
+void nkWindow_Destroy(nkWindow_t *window)
+{
+    if (window == NULL)
+    {
+        return; /* nothing to do */
+    }
+
+}
+
+void nkWindow_RequestRedraw(nkWindow_t *window)
+{
+    if (window == NULL)
+    {
+        return; /* nothing to do */
+    }
+
+    emscripten_request_animation_frame(DrawCallback, NULL);
+}
+
+bool nkWindow_IsPointerActionDown(nkWindow_t *window, nkPointerAction_t action)
+{
+    return false;
+}
+
+bool nkWindow_IsKeyDown(nkWindow_t *window, uint32_t keycode)
+{
+    return false;
+}
+
+void nkWindow_RedrawViews(nkWindow_t *window)
+{
+    if (window == NULL || window->rootView == NULL)
+    {
+        printf("Window contains no views!\n");
+        return;
+    }
+
+    nkView_t *view = window->rootView;
+
+    while (view)
+    {   
+
+        if (view->backgroundColor.a > 0.001f)
+        {
+            nkDraw_SetColor(&window->drawContext, view->backgroundColor);
+            nkDraw_Rect(&window->drawContext, view->frame.x, view->frame.y, view->frame.width, view->frame.height);
+        }
+        
+        //printf("Rendered rect at (%f, %f) size (%f, %f)\n", view->frame.x, view->frame.y, view->frame.width, view->frame.height);
+        //printf("Renderered color (%f, %f, %f, %f)\n", view->BackgroundColor.Red, view->BackgroundColor.Green, view->BackgroundColor.Blue, view->BackgroundColor.Alpha);
+
+        if (view->drawCallback)
+        {
+            view->drawCallback(view);
+        }
+
+        view = nkView_NextViewInTree(view);
+    }
+}
+
+void nkWindow_LayoutViews(nkWindow_t *window)
+{
+    if (window == NULL || window->rootView == NULL)
+    {
+        printf("Window contains no views!\n");
+        return;
+    }
+
+    window->rootView->frame = (nkRect_t){0, 0, window->width, window->height};
+
+    MeasureWindow(window);
+    ArrangeWindow(window);
+}
+
+bool nkWindow_PollEvents(void)
+{
+    nkWindow_LayoutViews(windowHandle);
+    nkWindow_RequestRedraw(windowHandle);
+    return false;
+}
+
+/***************************************************************
+** MARK: STATIC FUNCTIONS
+***************************************************************/
+
+static void MeasureWindow(nkWindow_t *window)
+{
+    nkView_t *view = nkView_DeepestViewInTree(window->rootView);
+    
+    /* measure views in a bottom-up traversal */
+    while (view)
+    {
+        if (view->measureCallback)
+        {
+            view->measureCallback(view);
+        }
+
+        view = nkView_PreviousViewInTree(view);
+    }
+}
+
+static void ArrangeWindow(nkWindow_t *window)
+{
+
+    /* arrange views in a top-down traversal */
+    nkView_t *view = window->rootView;
+
+    if (window->rootView->sizeRequest.width > window->rootView->frame.width)
+    {
+        window->rootView->frame.width = window->rootView->sizeRequest.width;
+    }
+    
+    if (window->rootView->sizeRequest.height > window->rootView->frame.height)
+    {
+        window->rootView->frame.height = window->rootView->sizeRequest.height;
+    }
+
+    while (view)
+    {
+        if (view->arrangeCallback)
+        {
+            view->arrangeCallback(view);
+        }
+
+        view = nkView_NextViewInTree(view);
+    }
+}
+
+static void InitWeb(void)
+{
+    /* create a canvas */
+    printf("Initializing Web backend...\n");
+
+
+    emscripten_webgl_init_context_attributes(&webglAttributes);
+    webglAttributes.majorVersion = 2;
+    webglAttributes.minorVersion = 0;
+    webglAttributes.alpha = EM_FALSE; /* disable alpha to reduce resize artifacts */
+    webglAttributes.enableExtensionsByDefault = true;
+
+    webglContext = emscripten_webgl_create_context("#canvas", &webglAttributes);
+    if (webglContext <= 0)
+    {
+        fprintf(stderr, "Failed to create WebGL context!\n");
+        return;
+    }
+    else 
+    {
+        printf("WebGL context created successfully.\n");
+    }
+
+    emscripten_webgl_make_context_current(webglContext);
+
+    emscripten_set_mousemove_callback("#canvas", NULL, false, MouseCallback);
+    emscripten_set_mousedown_callback("#canvas", NULL, false, MouseCallback);
+    emscripten_set_mouseup_callback("#canvas", NULL, false, MouseCallback);
+    emscripten_set_keydown_callback("#canvas", NULL, false, KeyCallback);
+    emscripten_set_keyup_callback("#canvas", NULL, false, KeyCallback);
+    emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, false, ResizeCallback);
+}
+
+static EM_BOOL MouseCallback(int eventType, const EmscriptenMouseEvent* e, void* userData)
+{
+    //printf("Mouse event: %d at (%d, %d)\n", eventType, e->targetX, e->targetY);
+    if (windowHandle == NULL)
+    {
+        return false; /* no window to handle events for */
+    }
+
+    switch (eventType)
+    {
+        case EMSCRIPTEN_EVENT_MOUSEDOWN:
+        {
+            //nkWindow_PointerActionBegin(windowHandle, e->button, e->targetX, e->targetY);
+        } break;
+
+        case EMSCRIPTEN_EVENT_MOUSEUP:
+        {
+            //nkWindow_PointerActionEnd(windowHandle, e->button, e->targetX, e->targetY);
+        } break;
+
+        case EMSCRIPTEN_EVENT_MOUSEMOVE:
+        {
+            //nkWindow_PointerMove(windowHandle, e->targetX, e->targetY);
+        } break;
+
+        default:
+        {
+            return false; /* unhandled event */
+        } break; 
+            
+    }
+
+    return true;
+}
+
+static EM_BOOL KeyCallback(int eventType, const EmscriptenKeyboardEvent* e, void* userData)
+{
+
+}
+
+static EM_BOOL ResizeCallback(int eventType, const EmscriptenUiEvent* e, void* userData)
+{
+
+
+    if (windowHandle == NULL)
+    {
+        return false; /* no window to handle events for */
+    }
+
+    float pixelRatio = (float)emscripten_get_device_pixel_ratio();
+
+    /* broken so set to 1.0f */
+    pixelRatio = 1.0f;
+
+    float cssWidth = (float)EM_ASM_DOUBLE({ return window.innerWidth; });
+    float cssHeight = (float)EM_ASM_DOUBLE({ return window.innerHeight; });
+
+    float width = (cssWidth * pixelRatio);
+    float height = (cssHeight * pixelRatio);
+
+    windowHandle->width = (float)width;
+    windowHandle->height = (float)height;
+
+    if (windowHandle->resizeCallback)
+    {
+        windowHandle->resizeCallback(windowHandle, width, height);
+    }    
+    
+    emscripten_request_animation_frame(DrawCallback, windowHandle);
+
+    return true;
+}
+
+static EM_BOOL DrawCallback(double time, void* userData)
+{
+    nkWindow_t *window = (nkWindow_t *)userData;
+
+    if (window == NULL)
+    {
+        return false; /* nothing to render */
+    }
+    
+    int canvasWidth;
+    int canvasHeight;
+
+    /* Get the actual current size of the canvas's underlying drawing buffer. */
+    emscripten_get_canvas_element_size("#canvas", &canvasWidth, &canvasHeight);
+
+    /* Check if it matches the desired size from our window state. */
+    if (canvasWidth != (int)window->width || canvasHeight != (int)window->height)
+    {
+        /* If not, resize the canvas drawing buffer now, before we draw. */
+        emscripten_set_canvas_element_size("#canvas", (int)window->width, (int)window->height);
+    }
+    
+
+    glClearColor(
+        window->backgroundColor.r, 
+        window->backgroundColor.g, 
+        window->backgroundColor.b, 
+        window->backgroundColor.a
+    );
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glViewport(0, 0, (int)window->width, (int)window->height);
+
+    if (window->drawCallback)
+    {
+        window->drawCallback(window);
+    }
+
+    return true;
+}   

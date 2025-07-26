@@ -12,7 +12,11 @@ if (WIN32)
         user32
         opengl32
     )
+elseif(EMSCRIPTEN)
 
+    set(NANOWIN_SOURCES
+        lib/backends/web/nanowin.c
+    )
 elseif(UNIX)
 
     set(NANOWIN_SOURCES
@@ -23,12 +27,6 @@ elseif(APPLE)
 
     set(NANOWIN_SOURCES
         lib/backends/cocoa/nanowin.m
-    )
-    
-elseif(EMSCRIPTEN)
-
-    set(NANOWIN_SOURCES
-        lib/backends/wasm/nanowin.c
     )
 else()
     message(FATAL_ERROR "Unsupported platform!")
