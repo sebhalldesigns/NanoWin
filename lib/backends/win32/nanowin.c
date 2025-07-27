@@ -101,6 +101,8 @@ static HGLRC currentGlrc = NULL;
 
 static uint16_t highUnicodeSurrogate = 0;
 
+static LARGE_INTEGER frequency = {0}; /* for high precision timing */
+
 /***************************************************************
 ** MARK: STATIC FUNCTION DEFS
 ***************************************************************/
@@ -114,9 +116,6 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
 static uint32_t GetNkKeycodeFromWin32(WPARAM wParam);
 static WPARAM GetWin32KeycodeFromNk(WPARAM wParam);
-
-static void MeasureWindow(nkWindow_t *window);
-static void ArrangeWindow(nkWindow_t *window);
 
 /***************************************************************
 ** MARK: PUBLIC FUNCTIONS
@@ -480,26 +479,7 @@ void nkWindow_RedrawViews(nkWindow_t *window)
         return;
     }
 
-    nkView_t *view = window->rootView;
-
-    while (view)
-    {   
-
-        if (view->backgroundColor.a > 0.001f)
-        {
-            nkDraw_SetColor(&window->drawContext, view->backgroundColor);
-            nkDraw_Rect(&window->drawContext, view->frame.x, view->frame.y, view->frame.width, view->frame.height);
-        }
-       // printf("Rendered rect at (%f, %f) size (%f, %f)\n", view->Frame.Origin.X, view->Frame.Origin.Y, view->Frame.Size.Width, view->Frame.Size.Height);
-        //printf("Renderered color (%f, %f, %f, %f)\n", view->BackgroundColor.Red, view->BackgroundColor.Green, view->BackgroundColor.Blue, view->BackgroundColor.Alpha);
-
-        if (view->drawCallback)
-        {
-            view->drawCallback(view);
-        }
-
-        view = nkView_NextViewInTree(view);
-    }
+    nkView_RenderTree(window->rootView, &window->drawContext);
 }
 
 void nkWindow_LayoutViews(nkWindow_t *window)
@@ -510,10 +490,7 @@ void nkWindow_LayoutViews(nkWindow_t *window)
         return;
     }
 
-    window->rootView->frame = (nkRect_t){0, 0, window->width, window->height};
-
-    MeasureWindow(window);
-    ArrangeWindow(window);
+    nkView_LayoutTree(window->rootView, (nkSize_t){window->width, window->height});
 }
 
 bool nkWindow_PollEvents(void)
@@ -541,52 +518,6 @@ bool nkWindow_PollEvents(void)
 ** MARK: STATIC FUNCTIONS
 ***************************************************************/
 
-static void MeasureWindow(nkWindow_t *window)
-{
-    nkView_t *view = nkView_DeepestViewInTree(window->rootView);
-    
-    /* measure views in a bottom-up traversal */
-    while (view)
-    {
-        if (view->measureCallback)
-        {
-            view->measureCallback(view);
-        }
-
-        view = nkView_PreviousViewInTree(view);
-    }
-}
-
-static void ArrangeWindow(nkWindow_t *window)
-{
-
-    /* arrange views in a top-down traversal */
-
-    nkView_t *view = window->rootView;
-
-    if (window->rootView->sizeRequest.width > window->rootView->frame.width)
-    {
-        window->rootView->frame.width = window->rootView->sizeRequest.width;
-    }
-    
-    if (window->rootView->sizeRequest.height > window->rootView->frame.height)
-    {
-        window->rootView->frame.height = window->rootView->sizeRequest.height;
-    }
-
-    while (view)
-    {
-
-        if (view->arrangeCallback)
-        {
-            view->arrangeCallback(view);
-        }
-
-        view = nkView_NextViewInTree(view);
-    }
-}
-
-
 static LPWSTR CreateWideString(const char* str)
 {
     int size = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
@@ -598,6 +529,8 @@ static LPWSTR CreateWideString(const char* str)
 static void InitWin32()
 {
     SetConsoleOutputCP(CP_UTF8);
+
+    QueryPerformanceFrequency(&frequency); /* get the frequency for high precision timing */
 
     windowClass.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
     windowClass.lpfnWndProc = WindowProc;
@@ -900,6 +833,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 window->pointerMoveCallback(window, x, y);
             }
+
+            LARGE_INTEGER start, end;
+            QueryPerformanceCounter(&start);
+            nkView_ProcessPointerMovement(window->rootView, x, y, &window->hotView);
+            QueryPerformanceCounter(&end);
+
+            double elapsed = (double)(end.QuadPart - start.QuadPart) / frequency.QuadPart;
+
+            float elapsedMs = (float)(elapsed * 1000.0);
+
+            printf("Pointer moved to (%.2f, %.2f) in %.2f ms\n", x, y, elapsedMs);
+
         } break;
 
         case WM_LBUTTONDOWN:

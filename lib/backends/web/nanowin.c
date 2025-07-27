@@ -178,27 +178,7 @@ void nkWindow_RedrawViews(nkWindow_t *window)
         return;
     }
 
-    nkView_t *view = window->rootView;
-
-    while (view)
-    {   
-
-        if (view->backgroundColor.a > 0.001f)
-        {
-            nkDraw_SetColor(&window->drawContext, view->backgroundColor);
-            nkDraw_Rect(&window->drawContext, view->frame.x, view->frame.y, view->frame.width, view->frame.height);
-        }
-        
-        //printf("Rendered rect at (%f, %f) size (%f, %f)\n", view->frame.x, view->frame.y, view->frame.width, view->frame.height);
-        //printf("Renderered color (%f, %f, %f, %f)\n", view->BackgroundColor.Red, view->BackgroundColor.Green, view->BackgroundColor.Blue, view->BackgroundColor.Alpha);
-
-        if (view->drawCallback)
-        {
-            view->drawCallback(view);
-        }
-
-        view = nkView_NextViewInTree(view);
-    }
+    nkView_RenderTree(window->rootView, &window->drawContext);
 }
 
 void nkWindow_LayoutViews(nkWindow_t *window)
@@ -209,10 +189,7 @@ void nkWindow_LayoutViews(nkWindow_t *window)
         return;
     }
 
-    window->rootView->frame = (nkRect_t){0, 0, window->width, window->height};
-
-    MeasureWindow(window);
-    ArrangeWindow(window);
+    nkView_LayoutTree(window->rootView, (nkSize_t){window->width, window->height});
 }
 
 bool nkWindow_PollEvents(void)
@@ -224,49 +201,6 @@ bool nkWindow_PollEvents(void)
 /***************************************************************
 ** MARK: STATIC FUNCTIONS
 ***************************************************************/
-
-static void MeasureWindow(nkWindow_t *window)
-{
-    nkView_t *view = nkView_DeepestViewInTree(window->rootView);
-    
-    /* measure views in a bottom-up traversal */
-    while (view)
-    {
-        if (view->measureCallback)
-        {
-            view->measureCallback(view);
-        }
-
-        view = nkView_PreviousViewInTree(view);
-    }
-}
-
-static void ArrangeWindow(nkWindow_t *window)
-{
-
-    /* arrange views in a top-down traversal */
-    nkView_t *view = window->rootView;
-
-    if (window->rootView->sizeRequest.width > window->rootView->frame.width)
-    {
-        window->rootView->frame.width = window->rootView->sizeRequest.width;
-    }
-    
-    if (window->rootView->sizeRequest.height > window->rootView->frame.height)
-    {
-        window->rootView->frame.height = window->rootView->sizeRequest.height;
-    }
-
-    while (view)
-    {
-        if (view->arrangeCallback)
-        {
-            view->arrangeCallback(view);
-        }
-
-        view = nkView_NextViewInTree(view);
-    }
-}
 
 static void InitWeb(void)
 {
@@ -335,10 +269,16 @@ static EM_BOOL MouseCallback(int eventType, const EmscriptenMouseEvent* e, void*
 
         case EMSCRIPTEN_EVENT_MOUSEMOVE:
         {
+            float x = (float)e->targetX;
+            float y = (float)e->targetY;
+
             if (window->pointerMoveCallback)
             {
-                window->pointerMoveCallback(window, (float)e->targetX, (float)e->targetY);
+                window->pointerMoveCallback(window, x, y);
             }
+
+            nkView_ProcessPointerMovement(window->rootView, x, y, &window->hotView);
+
         } break;
 
         default:

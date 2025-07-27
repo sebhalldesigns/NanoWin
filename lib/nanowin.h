@@ -156,15 +156,6 @@ typedef enum
 
 typedef enum
 {
-    NK_POINTER_ACTION_PRIMARY           = 0x01,
-    NK_POINTER_ACTION_SECONDARY         = 0x02,
-    NK_POINTER_ACTION_TERTIARY          = 0x03,
-    NK_POINTER_ACTION_EXTENDED_1        = 0x04,
-    NK_POINTER_ACTION_EXTENDED_2        = 0x05
-} nkPointerAction_t;
-
-typedef enum
-{
     NK_WINDOW_VISIBILITY_VISIBLE        = 0x01,
     NK_WINDOW_VISIBILITY_HIDDEN         = 0x02,
     NK_WINDOW_VISIBILITY_MINIMIZED      = 0x03,
@@ -207,7 +198,6 @@ typedef struct nkWindow_t
     float height;
 
     nkColor_t backgroundColor;
-    nkView_t *rootView;
 
     nkDrawContext_t drawContext;
 
@@ -229,6 +219,11 @@ typedef struct nkWindow_t
     nkWindowKeyDownCallback_t keyDownCallback;
     nkWindowKeyUpCallback_t keyUpCallback;
     nkWindowCodepointInputCallback_t codepointInputCallback;
+
+    /* view management */
+    nkView_t *rootView;     /* root view of the window */
+    nkView_t *hotView;      /* view under cursor */
+    nkView_t *activeView;   /* view capturing input */
 
     #if _WIN32
         HWND windowHandle;
