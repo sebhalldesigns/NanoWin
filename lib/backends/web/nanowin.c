@@ -258,7 +258,7 @@ static EM_BOOL MouseCallback(int eventType, const EmscriptenMouseEvent* e, void*
     {
         case EMSCRIPTEN_EVENT_MOUSEDOWN:
         {
-            
+
             if (window->pointerActionBeginCallback)
             {
                 window->pointerActionBeginCallback(window, NK_POINTER_ACTION_PRIMARY, (float)e->targetX, (float)e->targetY);
@@ -275,10 +275,13 @@ static EM_BOOL MouseCallback(int eventType, const EmscriptenMouseEvent* e, void*
                 &window->activeAction
             );
 
+            nkWindow_RequestRedraw(window);
+
         } break;
 
         case EMSCRIPTEN_EVENT_MOUSEUP:
         {
+
             if (window->pointerActionEndCallback)
             {
                 window->pointerActionEndCallback(window, NK_POINTER_ACTION_PRIMARY, (float)e->targetX, (float)e->targetY);
@@ -294,6 +297,8 @@ static EM_BOOL MouseCallback(int eventType, const EmscriptenMouseEvent* e, void*
                 &window->activeView, 
                 &window->activeAction
             );
+
+            nkWindow_RequestRedraw(window);
 
         } break;
 
@@ -336,6 +341,13 @@ static EM_BOOL TouchCallback(int eventType, const EmscriptenTouchEvent* e, void*
     {
         case EMSCRIPTEN_EVENT_TOUCHSTART:
         {
+            if (window->pointerMoveCallback)
+            {
+                window->pointerMoveCallback(window, x, y);
+            }
+
+            nkView_ProcessPointerMovement(window->rootView, x, y, &window->hotView, window->activeView, window->activeAction);
+
             if (window->pointerActionBeginCallback)
             {
                 window->pointerActionBeginCallback(window, NK_POINTER_ACTION_PRIMARY, (float)e->touches[0].targetX, (float)e->touches[0].targetY);
@@ -351,6 +363,8 @@ static EM_BOOL TouchCallback(int eventType, const EmscriptenTouchEvent* e, void*
                 &window->activeView, 
                 &window->activeAction
             );
+
+            nkWindow_RequestRedraw(window);
 
         } break;
 
@@ -372,7 +386,8 @@ static EM_BOOL TouchCallback(int eventType, const EmscriptenTouchEvent* e, void*
                 &window->activeAction
             );
 
-
+            nkWindow_RequestRedraw(window);
+            
         } break;
 
         case EMSCRIPTEN_EVENT_TOUCHMOVE:

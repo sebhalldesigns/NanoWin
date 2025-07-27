@@ -495,6 +495,24 @@ void nkWindow_LayoutViews(nkWindow_t *window)
 
 bool nkWindow_PollEvents(void)
 {
+    
+    static bool firstRun = true;
+
+    if (firstRun)
+    {
+        firstRun = false;
+
+        nkWindow_t *current = windowList;
+
+        while (current != NULL)
+        {
+            nkWindow_LayoutViews(current);
+            nkWindow_RedrawViews(current);
+            current = current->next;
+        }
+    }
+
+    
     MSG msg;
     
     /* reset the high surrogate for the next event loop */
@@ -884,6 +902,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 &window->activeAction
             );
 
+            nkWindow_RequestRedraw(window);
+
         } break;
 
         case WM_LBUTTONUP:
@@ -903,6 +923,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 &window->activeView, 
                 &window->activeAction
             );
+
+            nkWindow_RequestRedraw(window);
             
         } break;
 
@@ -924,6 +946,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 &window->activeAction
             );
 
+            nkWindow_RequestRedraw(window);
+
         } break;
 
         case WM_RBUTTONUP:
@@ -943,6 +967,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 &window->activeView, 
                 &window->activeAction
             );
+
+            nkWindow_RequestRedraw(window);
 
         } break;
 
@@ -964,6 +990,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 &window->activeAction
             );
 
+            nkWindow_RequestRedraw(window);
+
         } break;
 
         case WM_MBUTTONUP:
@@ -983,6 +1011,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 &window->activeView, 
                 &window->activeAction
             );
+
+            nkWindow_RequestRedraw(window);
 
         } break;
 
@@ -1006,6 +1036,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     &window->activeAction
                 );
 
+                nkWindow_RequestRedraw(window);
+
+
+
             }
             else if (GET_XBUTTON_WPARAM(wParam) == XBUTTON2)
             {
@@ -1024,6 +1058,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     &window->activeView, 
                     &window->activeAction
                 );
+
+                nkWindow_RequestRedraw(window);
             }
         } break;
 
@@ -1046,6 +1082,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     &window->activeView, 
                     &window->activeAction
                 );
+
+                nkWindow_RequestRedraw(window);
             }
             else if (GET_XBUTTON_WPARAM(wParam) == XBUTTON2)
             {
@@ -1064,6 +1102,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     &window->activeView, 
                     &window->activeAction
                 );
+
+                nkWindow_RequestRedraw(window);
             }
         } break;
 
