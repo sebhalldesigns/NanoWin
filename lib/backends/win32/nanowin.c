@@ -834,16 +834,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 window->pointerMoveCallback(window, x, y);
             }
 
-            LARGE_INTEGER start, end;
-            QueryPerformanceCounter(&start);
-            nkView_ProcessPointerMovement(window->rootView, x, y, &window->hotView);
-            QueryPerformanceCounter(&end);
-
-            double elapsed = (double)(end.QuadPart - start.QuadPart) / frequency.QuadPart;
-
-            float elapsedMs = (float)(elapsed * 1000.0);
-
-            printf("Pointer moved to (%.2f, %.2f) in %.2f ms\n", x, y, elapsedMs);
+            nkView_ProcessPointerMovement(window->rootView, x, y, &window->hotView, window->activeView, window->activeAction);
 
         } break;
 
@@ -853,6 +844,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 window->pointerActionBeginCallback(window, NK_POINTER_ACTION_PRIMARY, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
             }
+
+            nkView_ProcessPointerAction(
+                window->rootView, 
+                NK_POINTER_ACTION_PRIMARY, 
+                POINTER_EVENT_BEGIN,
+                (float)GET_X_LPARAM(lParam), 
+                (float)GET_Y_LPARAM(lParam), 
+                window->hotView, 
+                &window->activeView, 
+                &window->activeAction
+            );
+
         } break;
 
         case WM_LBUTTONUP:
@@ -861,6 +864,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 window->pointerActionEndCallback(window, NK_POINTER_ACTION_PRIMARY, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
             }
+
+            nkView_ProcessPointerAction(
+                window->rootView, 
+                NK_POINTER_ACTION_PRIMARY, 
+                POINTER_EVENT_END,
+                (float)GET_X_LPARAM(lParam), 
+                (float)GET_Y_LPARAM(lParam), 
+                window->hotView, 
+                &window->activeView, 
+                &window->activeAction
+            );
+            
         } break;
 
         case WM_RBUTTONDOWN:
@@ -869,6 +884,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 window->pointerActionBeginCallback(window, NK_POINTER_ACTION_SECONDARY, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
             }
+
+            nkView_ProcessPointerAction(
+                window->rootView, 
+                NK_POINTER_ACTION_SECONDARY, 
+                POINTER_EVENT_BEGIN,
+                (float)GET_X_LPARAM(lParam), 
+                (float)GET_Y_LPARAM(lParam), 
+                window->hotView, 
+                &window->activeView, 
+                &window->activeAction
+            );
+
         } break;
 
         case WM_RBUTTONUP:
@@ -877,6 +904,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 window->pointerActionEndCallback(window, NK_POINTER_ACTION_SECONDARY, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
             }
+
+            nkView_ProcessPointerAction(
+                window->rootView, 
+                NK_POINTER_ACTION_SECONDARY, 
+                POINTER_EVENT_END,
+                (float)GET_X_LPARAM(lParam), 
+                (float)GET_Y_LPARAM(lParam), 
+                window->hotView, 
+                &window->activeView, 
+                &window->activeAction
+            );
+
         } break;
 
         case WM_MBUTTONDOWN:
@@ -885,6 +924,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 window->pointerActionBeginCallback(window, NK_POINTER_ACTION_TERTIARY, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
             }
+
+            nkView_ProcessPointerAction(
+                window->rootView, 
+                NK_POINTER_ACTION_TERTIARY, 
+                POINTER_EVENT_BEGIN,
+                (float)GET_X_LPARAM(lParam), 
+                (float)GET_Y_LPARAM(lParam), 
+                window->hotView, 
+                &window->activeView, 
+                &window->activeAction
+            );
+
         } break;
 
         case WM_MBUTTONUP:
@@ -893,6 +944,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 window->pointerActionEndCallback(window, NK_POINTER_ACTION_TERTIARY, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
             }
+
+            nkView_ProcessPointerAction(
+                window->rootView, 
+                NK_POINTER_ACTION_TERTIARY, 
+                POINTER_EVENT_END,
+                (float)GET_X_LPARAM(lParam), 
+                (float)GET_Y_LPARAM(lParam), 
+                window->hotView, 
+                &window->activeView, 
+                &window->activeAction
+            );
+
         } break;
 
         case WM_XBUTTONDOWN:
@@ -903,6 +966,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 {
                     window->pointerActionBeginCallback(window, NK_POINTER_ACTION_EXTENDED_1, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
                 }
+
+                nkView_ProcessPointerAction(
+                    window->rootView, 
+                    NK_POINTER_ACTION_EXTENDED_1, 
+                    POINTER_EVENT_BEGIN,
+                    (float)GET_X_LPARAM(lParam), 
+                    (float)GET_Y_LPARAM(lParam), 
+                    window->hotView, 
+                    &window->activeView, 
+                    &window->activeAction
+                );
+
             }
             else if (GET_XBUTTON_WPARAM(wParam) == XBUTTON2)
             {
@@ -910,6 +985,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 {
                     window->pointerActionBeginCallback(window, NK_POINTER_ACTION_EXTENDED_2, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
                 }
+
+                 nkView_ProcessPointerAction(
+                    window->rootView, 
+                    NK_POINTER_ACTION_EXTENDED_2, 
+                    POINTER_EVENT_BEGIN,
+                    (float)GET_X_LPARAM(lParam), 
+                    (float)GET_Y_LPARAM(lParam), 
+                    window->hotView, 
+                    &window->activeView, 
+                    &window->activeAction
+                );
             }
         } break;
 
@@ -921,6 +1007,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 {
                     window->pointerActionEndCallback(window, NK_POINTER_ACTION_EXTENDED_1, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
                 }
+
+                nkView_ProcessPointerAction(
+                    window->rootView, 
+                    NK_POINTER_ACTION_EXTENDED_1, 
+                    POINTER_EVENT_END,
+                    (float)GET_X_LPARAM(lParam), 
+                    (float)GET_Y_LPARAM(lParam), 
+                    window->hotView, 
+                    &window->activeView, 
+                    &window->activeAction
+                );
             }
             else if (GET_XBUTTON_WPARAM(wParam) == XBUTTON2)
             {
@@ -928,6 +1025,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 {
                     window->pointerActionEndCallback(window, NK_POINTER_ACTION_EXTENDED_2, (float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
                 }
+
+                nkView_ProcessPointerAction(
+                    window->rootView, 
+                    NK_POINTER_ACTION_EXTENDED_2, 
+                    POINTER_EVENT_END,
+                    (float)GET_X_LPARAM(lParam), 
+                    (float)GET_Y_LPARAM(lParam), 
+                    window->hotView, 
+                    &window->activeView, 
+                    &window->activeAction
+                );
             }
         } break;
 

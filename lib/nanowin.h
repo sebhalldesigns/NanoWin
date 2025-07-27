@@ -224,6 +224,8 @@ typedef struct nkWindow_t
     nkView_t *rootView;     /* root view of the window */
     nkView_t *hotView;      /* view under cursor */
     nkView_t *activeView;   /* view capturing input */
+    nkPointerAction_t activeAction;
+    nkPoint_t activeOrigin; /* origin of the active pointer action in window coords */
 
     #if _WIN32
         HWND windowHandle;

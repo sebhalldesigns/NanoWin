@@ -249,14 +249,30 @@ static EM_BOOL MouseCallback(int eventType, const EmscriptenMouseEvent* e, void*
 
     nkWindow_t *window = windowHandle;
 
+    float x = (float)e->targetX;
+    float y = (float)e->targetY;
+
     switch (eventType)
     {
         case EMSCRIPTEN_EVENT_MOUSEDOWN:
         {
+            
             if (window->pointerActionBeginCallback)
             {
                 window->pointerActionBeginCallback(window, NK_POINTER_ACTION_PRIMARY, (float)e->targetX, (float)e->targetY);
             }
+
+            nkView_ProcessPointerAction(
+                window->rootView, 
+                NK_POINTER_ACTION_PRIMARY, 
+                POINTER_EVENT_BEGIN,
+                x, 
+                y, 
+                window->hotView, 
+                &window->activeView, 
+                &window->activeAction
+            );
+
         } break;
 
         case EMSCRIPTEN_EVENT_MOUSEUP:
@@ -265,19 +281,28 @@ static EM_BOOL MouseCallback(int eventType, const EmscriptenMouseEvent* e, void*
             {
                 window->pointerActionEndCallback(window, NK_POINTER_ACTION_PRIMARY, (float)e->targetX, (float)e->targetY);
             }
+
+            nkView_ProcessPointerAction(
+                window->rootView, 
+                NK_POINTER_ACTION_PRIMARY, 
+                POINTER_EVENT_END,
+                x, 
+                y, 
+                window->hotView, 
+                &window->activeView, 
+                &window->activeAction
+            );
+
         } break;
 
         case EMSCRIPTEN_EVENT_MOUSEMOVE:
         {
-            float x = (float)e->targetX;
-            float y = (float)e->targetY;
-
             if (window->pointerMoveCallback)
             {
                 window->pointerMoveCallback(window, x, y);
             }
 
-            nkView_ProcessPointerMovement(window->rootView, x, y, &window->hotView);
+            nkView_ProcessPointerMovement(window->rootView, x, y, &window->hotView, window->activeView, window->activeAction);
 
         } break;
 
@@ -301,6 +326,10 @@ static EM_BOOL TouchCallback(int eventType, const EmscriptenTouchEvent* e, void*
 
     nkWindow_t *window = windowHandle;
 
+    
+    float x = (float)e->touches[0].targetX;
+    float y = (float)e->touches[0].targetY;
+
     switch (eventType)
     {
         case EMSCRIPTEN_EVENT_TOUCHSTART:
@@ -309,6 +338,18 @@ static EM_BOOL TouchCallback(int eventType, const EmscriptenTouchEvent* e, void*
             {
                 window->pointerActionBeginCallback(window, NK_POINTER_ACTION_PRIMARY, (float)e->touches[0].targetX, (float)e->touches[0].targetY);
             }
+
+            nkView_ProcessPointerAction(
+                window->rootView, 
+                NK_POINTER_ACTION_PRIMARY, 
+                POINTER_EVENT_BEGIN,
+                x, 
+                y, 
+                window->hotView, 
+                &window->activeView, 
+                &window->activeAction
+            );
+
         } break;
 
         case EMSCRIPTEN_EVENT_TOUCHEND:
@@ -317,6 +358,19 @@ static EM_BOOL TouchCallback(int eventType, const EmscriptenTouchEvent* e, void*
             {
                 window->pointerActionEndCallback(window, NK_POINTER_ACTION_PRIMARY, (float)e->touches[0].targetX, (float)e->touches[0].targetY);
             }
+
+            nkView_ProcessPointerAction(
+                window->rootView, 
+                NK_POINTER_ACTION_PRIMARY, 
+                POINTER_EVENT_END,
+                x, 
+                y, 
+                window->hotView, 
+                &window->activeView, 
+                &window->activeAction
+            );
+
+
         } break;
 
         case EMSCRIPTEN_EVENT_TOUCHMOVE:
@@ -325,6 +379,9 @@ static EM_BOOL TouchCallback(int eventType, const EmscriptenTouchEvent* e, void*
             {
                 window->pointerMoveCallback(window, (float)e->touches[0].targetX, (float)e->touches[0].targetY);
             }
+
+            nkView_ProcessPointerMovement(window->rootView, x, y, &window->hotView, window->activeView, window->activeAction);
+
         } break;
 
         default:
