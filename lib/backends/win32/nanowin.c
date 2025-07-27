@@ -829,12 +829,40 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             float x = (float)GET_X_LPARAM(lParam);
             float y = (float)GET_Y_LPARAM(lParam);
 
+            /* Request WM_MOUSELEAVE */
+            TRACKMOUSEEVENT tme;
+            tme.cbSize = sizeof(tme);
+            tme.dwFlags = TME_LEAVE;
+            tme.hwndTrack = hwnd;
+            TrackMouseEvent(&tme);
+
             if (window->pointerMoveCallback)
             {
                 window->pointerMoveCallback(window, x, y);
             }
 
             nkView_ProcessPointerMovement(window->rootView, x, y, &window->hotView, window->activeView, window->activeAction);
+
+        } break;
+
+        case WM_MOUSELEAVE:
+        {   
+            
+            /* set origin to -1, -1 */
+            nkView_ProcessPointerAction(
+                window->rootView, 
+                window->activeAction, 
+                POINTER_EVENT_CANCEL,
+                -1.0f, 
+                -1.0f,
+                window->hotView, 
+                &window->activeView, 
+                &window->activeAction
+            );
+
+            nkView_ProcessPointerMovement(window->rootView, -1.0f, -1.0f, &window->hotView, window->activeView, window->activeAction);
+        
+            nkWindow_RequestRedraw(window);
 
         } break;
 

@@ -52,6 +52,7 @@ static void InitWeb(void);
 
 
 static EM_BOOL MouseCallback(int eventType, const EmscriptenMouseEvent* e, void* userData);
+static EM_BOOL MouseLeaveCallback(int eventType, const EmscriptenMouseEvent* e, void* userData);
 static EM_BOOL TouchCallback(int eventType, const EmscriptenTouchEvent* e, void* userData);
 static EM_BOOL KeyCallback(int eventType, const EmscriptenKeyboardEvent* e, void* userData);
 static EM_BOOL ResizeCallback(int eventType, const EmscriptenUiEvent* e, void* userData);
@@ -234,6 +235,7 @@ static void InitWeb(void)
     emscripten_set_touchstart_callback("#canvas", NULL, false, TouchCallback);
     emscripten_set_touchend_callback("#canvas", NULL, false, TouchCallback);
     emscripten_set_touchmove_callback("#canvas", NULL, false, TouchCallback);
+    emscripten_set_mouseleave_callback("#canvas", NULL, false, MouseLeaveCallback);
     emscripten_set_keydown_callback("#canvas", NULL, false, KeyCallback);
     emscripten_set_keyup_callback("#canvas", NULL, false, KeyCallback);
     emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, false, ResizeCallback);
@@ -392,6 +394,33 @@ static EM_BOOL TouchCallback(int eventType, const EmscriptenTouchEvent* e, void*
     }
 
     return true;
+}
+
+static EM_BOOL MouseLeaveCallback(int eventType, const EmscriptenMouseEvent* e, void* userData)
+{
+    if (windowHandle == NULL)
+    {
+        return false; /* no window to handle events for */
+    }
+
+    nkWindow_t *window = windowHandle;
+
+    /* set origin to -1, -1 */
+    nkView_ProcessPointerAction(
+        window->rootView, 
+        window->activeAction, 
+        POINTER_EVENT_CANCEL,
+        -1.0f, 
+        -1.0f,
+        window->hotView, 
+        &window->activeView, 
+        &window->activeAction
+    );
+
+    nkView_ProcessPointerMovement(window->rootView, -1.0f, -1.0f, &window->hotView, window->activeView, window->activeAction);
+
+    nkWindow_RequestRedraw(window);
+
 }
 
 static EM_BOOL KeyCallback(int eventType, const EmscriptenKeyboardEvent* e, void* userData)
