@@ -882,6 +882,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             nkView_ProcessPointerMovement(window->rootView, x, y, &window->hotView, window->activeView, window->activeAction);
 
+            nkWindow_RequestRedraw(window);
+
         } break;
 
         case WM_MOUSELEAVE:
