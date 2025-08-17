@@ -479,6 +479,12 @@ void nkWindow_RedrawViews(nkWindow_t *window)
         return;
     }
 
+    if (currentGlrc != window->glRenderContext)
+    {
+        wglMakeCurrent(window->drawingContext, window->glRenderContext);
+        currentGlrc = window->glRenderContext;
+    }
+
     nkView_RenderTree(window->rootView, &window->drawContext);
 }
 
@@ -506,6 +512,12 @@ bool nkWindow_PollEvents(void)
 
         while (current != NULL)
         {
+            if (currentGlrc != current->glRenderContext)
+            {
+                wglMakeCurrent(current->drawingContext, current->glRenderContext);
+                currentGlrc = current->glRenderContext;
+            }
+
             nkWindow_LayoutViews(current);
             nkWindow_RedrawViews(current);
             current = current->next;
