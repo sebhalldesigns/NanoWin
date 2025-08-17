@@ -190,7 +190,7 @@ void nkWindow_LayoutViews(nkWindow_t *window)
         return;
     }
 
-    nkView_LayoutTree(window->rootView, (nkSize_t){window->width, window->height});
+    nkView_LayoutTree(window->rootView, (nkSize_t){window->width, window->height}, &window->drawContext);
 }
 
 bool nkWindow_PollEvents(void)
