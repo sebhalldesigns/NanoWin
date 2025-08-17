@@ -314,6 +314,8 @@ static EM_BOOL MouseCallback(int eventType, const EmscriptenMouseEvent* e, void*
 
             nkView_ProcessPointerMovement(window->rootView, x, y, &window->hotView, window->activeView, window->activeAction);
 
+            nkWindow_RequestRedraw(window);
+
         } break;
 
         default:
@@ -430,6 +432,8 @@ static EM_BOOL TouchCallback(int eventType, const EmscriptenTouchEvent* e, void*
 
             nkView_ProcessPointerMovement(window->rootView, x, y, &window->hotView, window->activeView, window->activeAction);
 
+            nkWindow_RequestRedraw(window);
+
         } break;
 
         default:
@@ -501,6 +505,8 @@ static EM_BOOL ResizeCallback(int eventType, const EmscriptenUiEvent* e, void* u
     {
         windowHandle->resizeCallback(windowHandle, width, height);
     }    
+
+    nkWindow_LayoutViews(windowHandle); 
     
     emscripten_request_animation_frame(DrawCallback, windowHandle);
 
@@ -540,10 +546,16 @@ static EM_BOOL DrawCallback(double time, void* userData)
 
     glViewport(0, 0, (int)window->width, (int)window->height);
 
+    nkDraw_Begin(&window->drawContext, window->width, window->height);
+
+    nkWindow_RedrawViews(window); // Redraw the views in the window
+
     if (window->drawCallback)
     {
         window->drawCallback(window);
     }
+
+    nkDraw_End(&window->drawContext);
 
     return true;
 }   

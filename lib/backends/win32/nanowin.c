@@ -821,12 +821,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             nkDraw_Begin(&window->drawContext, window->width, window->height);
 
+            nkWindow_RedrawViews(window); // Redraw the views in the window
+
             if (window->drawCallback)
             {
                 window->drawCallback(window);
             }
-
-            nkWindow_RedrawViews(window); // Redraw the views in the window
 
             nkDraw_End(&window->drawContext);
 
