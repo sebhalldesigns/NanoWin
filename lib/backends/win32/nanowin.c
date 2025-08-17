@@ -764,6 +764,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 window->resizeCallback(window, width, height);
             }
+
+            nkWindow_LayoutViews(window); 
+
         } break;
 
         case WM_DESTROY:
@@ -816,10 +819,16 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             glViewport(0, 0, (int)window->width, (int)window->height);
 
+            nkDraw_Begin(&window->drawContext, window->width, window->height);
+
             if (window->drawCallback)
             {
                 window->drawCallback(window);
             }
+
+            nkWindow_RedrawViews(window); // Redraw the views in the window
+
+            nkDraw_End(&window->drawContext);
 
             SwapBuffers(window->drawingContext);
             EndPaint(hwnd, &window->paintStruct);
