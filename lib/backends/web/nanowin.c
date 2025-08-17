@@ -42,6 +42,7 @@ static nkWindow_t *windowHandle = NULL;
 static EMSCRIPTEN_WEBGL_CONTEXT_HANDLE webglContext;
 static EmscriptenWebGLContextAttributes webglAttributes;
 static EmscriptenMouseEvent mouseEvent;
+static EmscriptenWheelEvent wheelEvent;
 static EmscriptenKeyboardEvent keyboardEvent;
 
 /***************************************************************
@@ -53,6 +54,7 @@ static void InitWeb(void);
 
 static EM_BOOL MouseCallback(int eventType, const EmscriptenMouseEvent* e, void* userData);
 static EM_BOOL MouseLeaveCallback(int eventType, const EmscriptenMouseEvent* e, void* userData);
+static EM_BOOL WheelEventCallback(int eventType, const EmscriptenWheelEvent* e, void* userData);
 static EM_BOOL TouchCallback(int eventType, const EmscriptenTouchEvent* e, void* userData);
 static EM_BOOL KeyCallback(int eventType, const EmscriptenKeyboardEvent* e, void* userData);
 static EM_BOOL ResizeCallback(int eventType, const EmscriptenUiEvent* e, void* userData);
@@ -232,6 +234,7 @@ static void InitWeb(void)
     emscripten_set_mousemove_callback("#canvas", NULL, false, MouseCallback);
     emscripten_set_mousedown_callback("#canvas", NULL, false, MouseCallback);
     emscripten_set_mouseup_callback("#canvas", NULL, false, MouseCallback);
+    emscripten_set_wheel_callback("#canvas", NULL, false, WheelEventCallback);
     emscripten_set_touchstart_callback("#canvas", NULL, false, TouchCallback);
     emscripten_set_touchend_callback("#canvas", NULL, false, TouchCallback);
     emscripten_set_touchmove_callback("#canvas", NULL, false, TouchCallback);
@@ -319,6 +322,34 @@ static EM_BOOL MouseCallback(int eventType, const EmscriptenMouseEvent* e, void*
         } break; 
             
     }
+
+    return true;
+}
+
+static EM_BOOL WheelEventCallback(int eventType, const EmscriptenWheelEvent* e, void* userData)
+{   
+    printf("Wheel event: %d with delta (%f, %f)\n", eventType, e->deltaX, e->deltaY);
+
+    if (windowHandle == NULL)
+    {
+        return false; /* no window to handle events for */
+    }
+
+    float deltaX = -1.0f * (float)e->deltaX / 100.0f;
+    float deltaY = -1.0f * (float)e->deltaY / 100.0f;
+
+    if (windowHandle->scrollCallback)
+    {
+        windowHandle->scrollCallback(windowHandle, deltaX, deltaY);
+    }
+
+    nkView_ProcessScroll(
+        windowHandle->rootView, 
+        deltaY, 
+        windowHandle->hotView
+    );
+
+    nkWindow_RequestRedraw(windowHandle);
 
     return true;
 }

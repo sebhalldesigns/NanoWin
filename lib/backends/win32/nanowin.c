@@ -1128,6 +1128,14 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 window->scrollCallback(window, deltaX, deltaY);
             }
+
+            nkView_ProcessScroll(
+                window->rootView, 
+                deltaY, 
+                window->hotView
+            );
+
+            nkWindow_RequestRedraw(window);
         } break;
 
         case WM_KEYDOWN:
